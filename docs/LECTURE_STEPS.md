@@ -1113,6 +1113,168 @@ This analogy maps exactly to the `useReducer` flow:
 [↑ top - 189. Lesson 189 — *Managing State With useReducer*](#-189-lesson-189---managing-state-with-usereducer)
 
 
+<br>
+
+## 🔧 190. Lesson 190 — *The "React Quiz" App*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [190. Lesson 190 — *The "React Quiz" App*](#-190-lesson-190---the-react-quiz-app)
+- [190.1 Context](#1901-context)
+- [190.2 Updating code according the context](#1902-updating-code-according-the-context)
+  - [190.2.1 Import the `Header` component in `App`](#19021-import-the-header-component-in-app)
+  - [190.2.2 Create `Main` component](#19022-create-main-component)
+  - [190.2.3 Import `Main` component to `App`](#19023-import-main-component-to-app)
+- [190.3 Issues](#1903-issues)
+- [190.4 Pending Fixes (TODO)](#1904-pending-fixes-todo)
+
+### 🧠 190.1 Context:
+
+This lesson marks the beginning of a new project: **"The React Quiz"**. After learning the fundamentals of `useReducer` with a simple `DateCounter` component (Lessons 187–189), the course now applies that knowledge to a real-world quiz application.
+
+**Key Concepts:**
+
+1. **Project scaffolding**: The lesson transitions from the practice `DateCounter` component to a fresh quiz app UI. The old component is commented out but kept for reference.
+2. **Component composition with `children`**: The `Main` component is created as a **layout wrapper** that renders any content passed between its opening and closing tags via the `children` prop. This is a foundational React pattern for building reusable layout containers.
+3. **Semantic HTML structure**: The app uses a `<header>` element (via the `Header` component) and a `<main>`-styled `<div>` (via the `Main` component), establishing a clear visual and structural hierarchy.
+4. **Pre-built CSS**: The lesson leverages a provided `index.css` stylesheet that already contains classes for the full quiz app (`.app`, `.app-header`, `.main`, `.btn`, `.options`, `.result`, `.loader-container`, `.timer`, etc.). This means the focus of this lesson is on component architecture, not styling.
+
+**Advantages:**
+- Separating layout (`Main`) from content makes the `App` component clean and readable.
+- Using the `children` prop makes `Main` fully reusable — it can wrap any content without modification.
+- Starting with a clear component hierarchy (`App` → `Header` + `Main`) provides a solid foundation for adding quiz-specific components in later lessons.
+- Pre-existing utility components (`Loader`, `Error`) are already in the `src/components/` directory, ready for future use.
+
+**Disadvantages / Gotchas:**
+- The `Main` component uses a `<div>` with `className="main"` instead of a semantic `<main>` HTML element. While this works, a `<main>` tag would be more accessible and semantically correct.
+- Placeholder content (`<p>1/15</p>` and `<p>Question</p>`) is hardcoded inside `<Main>` in `App.jsx`. This is intentional for scaffolding but will need to be replaced with dynamic quiz components.
+- The `Header` component references `logo512.png` from the `public` folder. This path relies on Vite's public asset serving convention.
+
+**When to Consider Alternatives:**
+- For larger applications, a dedicated layout system (e.g., React Router's nested layouts) may be preferable over manual `children`-based wrappers.
+- If the `Main` wrapper only adds a CSS class, an alternative is applying the class directly in the parent — though the separate component approach is cleaner and more composable.
+
+### ⚙️ 190.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Scaffold the initial UI for "The React Quiz" application by replacing the practice `DateCounter` component with a proper app layout.
+- **Problem**: The project currently renders the `DateCounter` from previous lessons. A new app structure is needed with a header and a main content area for quiz functionality.
+- **Connection**: The subsections progressively build the layout:
+    1. Replace `DateCounter` with the `Header` component and add inline `<main>` content in `App.jsx` (190.2.1).
+    2. Extract the main content area into a reusable `Main` component using the `children` prop (190.2.2).
+    3. Import and use the `Main` component in `App.jsx`, passing placeholder content as children (190.2.3).
+
+#### 190.2.1 Import the `Header` component in `App`:
+
+**Subsection Summary**
+- **Purpose**: Replaces the `DateCounter` import with the `Header` component and adds a basic main content area directly in `App.jsx`.
+- **Key Changes**: (1) Comment out the `DateCounter` import and its JSX usage. (2) Import the pre-existing `Header` component. (3) Add a `<main className="main">` element with placeholder text (`1/15` and `Question`) inside the `.app` container.
+- **Result**: The app now displays the React logo, the "The React Quiz" title in the header, and placeholder text below it.
+- **Screenshot**: Shows the app with the header (React logo + "THE REACT QUIZ" title) and two lines of placeholder text ("1/15" and "Question") rendered below.
+
+```jsx
+/* src/App.jsx */
+//import DateCounter from './components/DateCounter'    // 👈🏽 ✅ (1)
+import Header from './components/Header'    // 👈🏽 ✅ (2)
+function App() {
+  return (
+    <div className="app">
+      {/* <DateCounter /> */}     {/* 👈🏽 ✅ (1) */}
+      <Header />    {/* 👈🏽 ✅ (2) */}
+      <main className="main">   {/* 👈🏽 ✅ (3) */}
+        <p>1/15</p>
+        <p>Question</p>
+      </main>
+    </div>
+  )
+}
+export default App
+```
+
+![react-quiz](../img/section16-lecture190-001.png)
+
+#### 190.2.2 Create `Main` component:
+
+**Subsection Summary**
+- **Purpose**: Extracts the main content area into a dedicated reusable component that accepts `children`.
+- **Key Pattern**: The `Main` component uses the **`children` prop** — a core React composition pattern. Instead of hardcoding content, it renders whatever JSX is passed between its opening and closing tags.
+- **Implementation**: A simple functional component that wraps `{children}` inside a `<div className="main">`.
+- **File**: Created as `src/components/Main.jsx`.
+
+```jsx
+/* src/components/Main.jsx */
+const Main = ({ children }) => {
+  return (
+    <div className="main">
+      {children}    {/* 👈🏽 ✅ */}
+    </div>
+  )
+}
+export default Main
+```
+
+#### 190.2.3 Import `Main` component to `App`:
+
+**Subsection Summary**
+- **Purpose**: Integrates the newly created `Main` component into `App.jsx`, replacing the inline `<main>` element.
+- **Key Changes**: (1) Import `Main` from `./components/Main`. (2) Replace the `<main className="main">` element with `<Main>`, passing the placeholder `<p>` tags as children.
+- **Result**: The UI looks identical, but the markup is now properly componentized. The React DevTools screenshot confirms the component tree: `App` → `Header` + `Main`.
+- **Screenshot**: Shows the same UI as before, but with the React DevTools open on the right, displaying the component hierarchy: `App` containing `Header` and `Main`.
+
+```jsx
+/* src/App.jsx */
+//import DateCounter from './components/DateCounter'
+import Header from './components/Header'
+import Main from './components/Main'    // 👈🏽 ✅
+function App() {
+
+  return (
+    <div className="app">
+      {/* <DateCounter /> */}
+      <Header />
+      <Main>    {/* 👈🏽 ✅ */}
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
+  )
+}
+
+export default App
+```
+
+![main component](../img/section16-lecture190-002.png)
+
+### 🐞 190.3 Issues:
+
+- The `Main` component uses a `<div className="main">` instead of a semantic `<main>` HTML element, which reduces accessibility and semantic meaning.
+- The `Header` component does not include `alt` text that describes the app context (current `alt="React logo"` is generic).
+- The `Error` component (`src/components/Error.jsx:3`) contains a typo: `"fecthing"` should be `"fetching"`.
+- Placeholder content (`<p>1/15</p>` and `<p>Question</p>`) is hardcoded in `App.jsx` — this is expected at this stage but will need dynamic replacement.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| `Main` uses `<div>` instead of semantic `<main>` | ℹ️ Low Priority | `src/components/Main.jsx:3` — A `<main>` HTML element would improve accessibility and semantics. |
+| Typo in `Error` component: `"fecthing"` | ⚠️ Identified | `src/components/Error.jsx:3` — `"There was an error fecthing questions."` should be `"fetching"`. |
+| Placeholder content hardcoded in `App.jsx` | ℹ️ Informational | `src/App.jsx:11-12` — `<p>1/15</p>` and `<p>Question</p>` are temporary scaffolding; will be replaced in later lessons. |
+
+### 🧱 190.4 Pending Fixes (TODO)
+
+- [ ] Consider changing `<div className="main">` to `<main className="main">` in `src/components/Main.jsx:3` for semantic HTML.
+- [ ] Fix typo `"fecthing"` → `"fetching"` in `src/components/Error.jsx:3`.
+- [ ] Add `aria-label` attributes to the `Header` component's `<header>` element for improved accessibility (`src/components/Header.jsx:3`).
+- [ ] Remove commented-out `DateCounter` import and JSX in `src/App.jsx:1,8` once no longer needed for reference.
+- [ ] Replace placeholder `<p>` tags in `App.jsx` with dynamic quiz components in upcoming lessons.
+
+[↑ top - 190. Lesson 190 — *The "React Quiz" App*](#-190-lesson-190---the-react-quiz-app)
+
+
+
+
+
+
+
 
 
 

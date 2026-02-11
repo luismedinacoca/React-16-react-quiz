@@ -1,11 +1,17 @@
-import DateCounter from './components/DateCounter'
-
+//import DateCounter from './components/DateCounter'
+import Header from './components/Header'
+import Main from './components/Main'
 function App() {
 
   return (
-    <>
-      <DateCounter />
-    </>
+    <div className="app">
+      {/* <DateCounter /> */}
+      <Header />
+      <Main>
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
   )
 }
 
