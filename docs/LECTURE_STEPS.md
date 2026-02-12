@@ -4,7 +4,6 @@
 
 ## 🧳 Section 16: *The Advanced useReducer Hook*
 
---- 
 
 ## 🔧 187. Lesson 187 — *Yet Another Hook: useReducer*
 
@@ -1268,6 +1267,667 @@ export default App
 - [ ] Replace placeholder `<p>` tags in `App.jsx` with dynamic quiz components in upcoming lessons.
 
 [↑ top - 190. Lesson 190 — *The "React Quiz" App*](#-190-lesson-190---the-react-quiz-app)
+
+
+<br>
+
+## 🔧 191. Lesson 191 — *Loading Questions from a Fake API*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [191. Lesson 191 — *Loading Questions from a Fake API*](#-191-lesson-191---loading-questions-from-a-fake-api)
+- [191.1 Context](#1911-context)
+- [191.2 Updating code according the context](#1912-updating-code-according-the-context)
+  - [191.2.01 Create `Data` folder then put inside the `questions.json` file](#19121-create-data-folder-then-put-inside-the-questionsjson-file)
+  - [191.2.02 Create a fake-api installing `json-server`](#19122-create-a-fake-api-installing-json-server)
+  - [191.2.03 Add a new npm script for running the `data/questions.json` file](#19123-add-a-new-npm-script-for-running-the-dataquestionsjson-file)
+  - [191.2.04 Run from terminal](#19124-run-from-terminal)
+  - [191.2.05 Merging `npm run dev` with `npm run server`](#19125-merging-npm-run-dev-with-npm-run-server)
+  - [191.2.06 Another merging option without installing anything previously](#19126-another-merging-option-without-installing-anything-previously)
+  - [191.2.07 Add `useEffect` hook for reading the json-server (`fake-api`) server](#19127-add-useeffect-hook-for-reading-the-json-server-fake-api-server)
+  - [191.2.08 Adding `useReducer` with `initialState` and dealing with different `status` definition](#19128-adding-usereducer-with-initialstate-and-dealing-with-different-status-definition)
+  - [191.2.09 Once data has been received, it triggers `dispatch({ type: "dataReceived" })`](#19129-once-data-has-been-received-it-triggers-dispatch-type-datareceived-)
+  - [191.2.10 Once data failed, it triggers `dispatch({ type: "dataFailed" })`](#191210-once-data-failed-it-triggers-dispatch-type-datafailed-)
+  - [191.2.11 State Diagram](#191211-state-diagram)
+- [191.3 Issues](#1913-issues)
+- [191.4 Pending Fixes (TODO)](#1914-pending-fixes-todo)
+
+### 🧠 191.1 Context:
+
+This lesson transitions the React Quiz app from a static UI scaffold (Lesson 190) to a **data-driven application** by introducing a **fake REST API** powered by `json-server` and loading quiz questions into component state via `useEffect` and `useReducer`. The combination of these two hooks establishes a robust pattern for managing asynchronous data fetching alongside complex, multi-status application state.
+
+**Key Concepts:**
+
+1. **Fake API with `json-server`**: A lightweight npm package that turns a `.json` file into a fully-functional REST API with endpoints derived from the JSON's top-level keys (e.g., `data/questions.json` → `GET /questions`). This is ideal for prototyping and front-end development without building a real backend.
+2. **`useEffect` for data fetching on mount**: The `useEffect` hook with an empty dependency array (`[]`) fires once after the initial render — the standard pattern for fetching data when a component mounts.
+3. **`useReducer` for multi-status state**: Instead of managing multiple boolean flags (`isLoading`, `isError`, `isReady`, etc.) with separate `useState` calls, a single `status` string (`"loading"`, `"error"`, `"ready"`, `"active"`, `"finished"`) inside the reducer state keeps the application status deterministic and mutually exclusive.
+4. **Dispatch-driven data flow**: The `fetch` promise chain dispatches actions (`"dataReceived"`, `"dataFailed"`) to the reducer, which processes them through a `switch` statement and returns the next state object. The component never directly sets state — it only describes *what happened*.
+5. **Parallel dev scripts with `concurrently`**: Both the Vite dev server and `json-server` need to run simultaneously. The `concurrently` package (or `npm-run-all`) allows running multiple npm scripts in parallel from a single command.
+
+**Advantages:**
+- `json-server` requires zero backend code — just a JSON file and an npm script.
+- Using a single `status` field eliminates impossible state combinations (e.g., `isLoading === true` and `isReady === true` simultaneously).
+- The reducer centralizes all state transitions, making the data-fetching lifecycle explicit and predictable.
+- The `concurrently` setup lets developers start the entire dev environment with one command (`npm run dev`).
+- The promise-based `fetch` chain cleanly separates success (`dataReceived`) from failure (`dataFailed`) paths.
+
+**Disadvantages / Gotchas:**
+- `json-server` is **not** a production solution — it is meant exclusively for development and prototyping.
+- The `fetch` API does **not** throw on HTTP error status codes (e.g., 404, 500). Only network failures trigger the `.catch()`. Proper production code should check `response.ok`.
+- The `error` variable in the `.catch()` handler is currently unused — it is not logged or stored in state, making debugging harder.
+- The `concurrently` package is an additional dev dependency. The `npm-run-all` alternative works without installation only if already globally available.
+- String-based status values (`"loading"`, `"error"`, etc.) are prone to typos. Consider using constants or an enum-like object.
+
+**When to Consider Alternatives:**
+- For production data fetching, use dedicated libraries like **React Query (TanStack Query)** or **SWR** that handle caching, retries, deduplication, and loading/error states automatically.
+- If the API grows complex, replace `json-server` with a real backend (Express, Fastify) or a BaaS (Firebase, Supabase).
+- For apps needing SSR or ISR, **Next.js** data-fetching methods (`getServerSideProps`, `getStaticProps`, Server Components) are more appropriate than client-side `useEffect` fetching.
+- If only one piece of state exists (e.g., just `questions`), `useState` with separate `isLoading`/`isError` flags may be simpler than a full reducer.
+
+### ⚙️ 191.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Set up a fake REST API with `json-server`, configure parallel npm scripts, and implement data fetching in `App.jsx` using `useEffect` combined with `useReducer` to manage the application's loading lifecycle.
+- **Problem**: The quiz app has a static UI with hardcoded placeholder content. It needs to load real question data from an external source and manage the loading/error/ready states.
+- **Connection**: The subsections progressively build the data layer:
+    1. Create the `data/questions.json` file with 15 quiz questions (191.2.01).
+    2. Install `json-server` as a dependency (191.2.02).
+    3. Add a `"server"` npm script to serve the JSON file on port 8000 (191.2.03).
+    4. Verify the server runs and serves data at `http://localhost:8000/questions` (191.2.04).
+    5. Configure `concurrently` to run both Vite and `json-server` in parallel (191.2.05).
+    6. Show an alternative using `npm-run-all` (191.2.06).
+    7. Add `useEffect` with `fetch` to load questions on mount (191.2.07).
+    8. Introduce `useReducer` with `initialState` and a `status` field to replace multiple boolean flags (191.2.08).
+    9. Wire up `dispatch({ type: "dataReceived" })` on successful fetch (191.2.09).
+    10. Wire up `dispatch({ type: "dataFailed" })` on failed fetch (191.2.10).
+    11. Visualize the state transitions with a Mermaid state diagram (191.2.11).
+
+#### 191.2.01 Create `Data` folder then put inside the `questions.json` file:
+
+**Subsection Summary**
+- **Purpose**: Provides the raw data source for the quiz — 15 React-related questions, each with 4 options, a `correctOption` index, and a `points` value.
+- **Key Detail**: The top-level key `"questions"` becomes the REST endpoint name when served by `json-server` (i.e., `GET /questions`).
+- **Data structure**: Each question object contains `question` (string), `options` (array of 4 strings), `correctOption` (0-based index), and `points` (10, 20, or 30 depending on difficulty).
+
+```jsx
+/* data/questions.json */
+{
+  "questions": [
+    {
+      "question": "Which is the most popular JavaScript framework?",
+      "options": ["Angular", "React", "Svelte", "Vue"],
+      "correctOption": 1,
+      "points": 10
+    },
+    {
+      "question": "Which company invented React?",
+      "options": ["Google", "Apple", "Netflix", "Facebook"],
+      "correctOption": 3,
+      "points": 10
+    },
+    {
+      "question": "What's the fundamental building block of React apps?",
+      "options": ["Components", "Blocks", "Elements", "Effects"],
+      "correctOption": 0,
+      "points": 10
+    },
+    {
+      "question": "What's the name of the syntax we use to describe the UI in React components?",
+      "options": ["FBJ", "Babel", "JSX", "ES2015"],
+      "correctOption": 2,
+      "points": 10
+    },
+    {
+      "question": "How does data flow naturally in React apps?",
+      "options": [
+        "From parents to children",
+        "From children to parents",
+        "Both ways",
+        "The developers decides"
+      ],
+      "correctOption": 0,
+      "points": 10
+    },
+    {
+      "question": "How to pass data into a child component?",
+      "options": ["State", "Props", "PropTypes", "Parameters"],
+      "correctOption": 1,
+      "points": 10
+    },
+    {
+      "question": "When to use derived state?",
+      "options": [
+        "Whenever the state should not trigger a re-render",
+        "Whenever the state can be synchronized with an effect",
+        "Whenever the state should be accessible to all components",
+        "Whenever the state can be computed from another state variable"
+      ],
+      "correctOption": 3,
+      "points": 30
+    },
+    {
+      "question": "What triggers a UI re-render in React?",
+      "options": [
+        "Running an effect",
+        "Passing props",
+        "Updating state",
+        "Adding event listeners to DOM elements"
+      ],
+      "correctOption": 2,
+      "points": 20
+    },
+    {
+      "question": "When do we directly \"touch\" the DOM in React?",
+      "options": [
+        "When we need to listen to an event",
+        "When we need to change the UI",
+        "When we need to add styles",
+        "Almost never"
+      ],
+      "correctOption": 3,
+      "points": 20
+    },
+    {
+      "question": "In what situation do we use a callback to update state?",
+      "options": [
+        "When updating the state will be slow",
+        "When the updated state is very data-intensive",
+        "When the state update should happen faster",
+        "When the new state depends on the previous state"
+      ],
+      "correctOption": 3,
+      "points": 30
+    },
+    {
+      "question": "If we pass a function to useState, when will that function be called?",
+      "options": [
+        "On each re-render",
+        "Each time we update the state",
+        "Only on the initial render",
+        "The first time we update the state"
+      ],
+      "correctOption": 2,
+      "points": 30
+    },
+    {
+      "question": "Which hook to use for an API request on the component's initial render?",
+      "options": ["useState", "useEffect", "useRef", "useReducer"],
+      "correctOption": 1,
+      "points": 10
+    },
+    {
+      "question": "Which variables should go into the useEffect dependency array?",
+      "options": [
+        "Usually none",
+        "All our state variables",
+        "All state and props referenced in the effect",
+        "All variables needed for clean up"
+      ],
+      "correctOption": 2,
+      "points": 30
+    },
+    {
+      "question": "An effect will always run on the initial render.",
+      "options": [
+        "True",
+        "It depends on the dependency array",
+        "False",
+        "In depends on the code in the effect"
+      ],
+      "correctOption": 0,
+      "points": 30
+    },
+    {
+      "question": "When will an effect run if it doesn't have a dependency array?",
+      "options": [
+        "Only when the component mounts",
+        "Only when the component unmounts",
+        "The first time the component re-renders",
+        "Each time the component is re-rendered"
+      ],
+      "correctOption": 3,
+      "points": 20
+    }
+  ]
+}
+```
+
+#### 191.2.02 Create a fake-api installing `json-server`:
+
+**Subsection Summary**
+- **Purpose**: Installs `json-server` as a project dependency so the JSON file can be served as a REST API during development.
+- **Key Detail**: `json-server` watches a JSON file and exposes its top-level keys as RESTful endpoints with full CRUD support (GET, POST, PUT, PATCH, DELETE).
+
+```bash
+npm i json-server
+```
+
+#### 191.2.03 Add a new npm script for running the `data/questions.json` file:
+
+**Subsection Summary**
+- **Purpose**: Adds a `"server"` script to `package.json` that starts `json-server` watching the questions file on port 8000.
+- **Key Detail**: The `--watch` flag enables live-reloading when the JSON file changes. The `--port 8000` flag avoids conflicting with Vite's default port (5173).
+- **Result**: Running `npm run server` starts the API at `http://localhost:8000/questions`.
+
+```jsx
+/* package.json */
+{
+  "name": "16-react-quiz",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "server": "json-server --watch data/questions.json --port 8000"   // 👈🏽 ✅
+  },
+  "dependencies": {
+    "json-server": "^1.0.0-beta.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.3.1"
+  }
+}
+```
+
+#### 191.2.04 Run from terminal:
+
+**Subsection Summary**
+- **Purpose**: Demonstrates how to start the fake API server and verify it works by visiting the endpoint in a browser.
+- **Key Detail**: The endpoint is derived from the JSON top-level key — `"questions"` maps to `/questions`. Navigating to a non-existent endpoint (e.g., `/questionsss`) returns an empty response, highlighting the importance of matching the exact key name.
+- **Screenshot**: Shows the endpoint mismatch warning when using an incorrect URL.
+
+```bash
+npm run server
+```
+
+* Verifying this server is running:
+
+  [👉🏽 click here](http://localhost:8000/questions)
+
+* Watch out this endpoint part:
+
+  ![check out the endpoint](../img/section16-lecture191-003.png)
+
+  [endpoint modified](http://localhost:8000/questionsss)
+
+#### 191.2.05 Merging `npm run dev` with `npm run server`:
+
+**Subsection Summary**
+- **Purpose**: Configures a single `npm run dev` command to start **both** the Vite dev server and `json-server` simultaneously using the `concurrently` package.
+- **Key Changes**: (1) Install `concurrently` as a dev dependency. (2) Rename the original `"dev"` script to `"dev:vite"`. (3) Create a new `"dev"` script that uses `concurrently` to run both `"dev:vite"` and `"server"` in parallel.
+- **Result**: One terminal command starts the entire development environment.
+- **Screenshot**: Shows terminal output with both Vite and `json-server` running concurrently, each prefixed with its process identifier.
+
+1. Install `concurrenctly`
+```bash
+npm install --save-dev concurrently
+```
+
+2. Open `package.json` and modify:
+```json
+{
+  "name": "16-react-quiz",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run server\"",    // 👈🏽 ✅
+    "dev:vite": "vite",   // 👈🏽 ✅
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "server": "json-server --watch data/questions.json --port 8000"   // 👈🏽
+  },
+  "dependencies": {
+    "json-server": "^1.0.0-beta.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.3.1"
+  }
+}
+```
+
+3. Execute:
+```bash
+npm run dev
+```
+
+![terminal output](../img/section16-lecture191-001.png)
+
+
+#### 191.2.06 Another merging option `npm run dev` with `npm run server` without installing anything previously:
+
+**Subsection Summary**
+- **Purpose**: Presents an alternative to `concurrently` using `npm-run-all --parallel`, which may already be available globally or as a transitive dependency.
+- **Key Detail**: The `--parallel` flag in `npm-run-all` achieves the same result — running `dev:vite` and `server` simultaneously. This avoids adding an extra dev dependency.
+- **Trade-off**: If `npm-run-all` is not installed globally or as a dependency, this approach will fail silently.
+
+```json
+"scripts": {
+  "dev": "npm-run-all --parallel dev:vite server",                    // 👈🏽 ✅
+  "dev:vite": "vite",                                                 // 👈🏽 ✅
+  "build": "vite build",
+  "lint": "eslint .",
+  "preview": "vite preview",
+  "server": "json-server --watch data/questions.json --port 8000"     // 👈🏽 ✅
+}
+```
+
+1. Execute from terminal:
+
+```bash
+npm run dev
+```
+
+#### 191.2.07 Add `useEffect` hook for reading the json-server (`fake-api`) server:
+
+**Subsection Summary**
+- **Purpose**: Implements the initial data-fetching logic in `App.jsx` using `useEffect` with `fetch`.
+- **Key Changes**: (1) Import `useEffect` from React. (2) Add a `useEffect` with an empty dependency array (`[]`) to fetch from `http://localhost:8000/questions` on mount. (3) Chain `.then()` to parse JSON and log the data, and `.catch()` to log errors.
+- **Alternative shown**: An `async`/`await` version with a `try`/`catch` block is also presented, which includes `response.ok` validation — a more robust approach for production.
+- **Screenshot**: Shows the browser console with the fetched questions array alongside the running app.
+
+```jsx
+/* src/App.jsx */
+import Header from './components/Header'
+import Main from './components/Main'
+import { useEffect } from 'react'
+
+function App() {
+
+  useEffect( () => {
+    fetch('http://localhost:8000/questions')
+      .then((resp) => resp.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error("Error", error))
+  }, [])
+  return (
+    <div className="app">
+      <Header />
+      <Main>
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
+  )
+}
+export default App
+```
+
+![both server and app running + json questions](../img/section16-lecture191-002.png)
+
+Another option using `async-await` with `try-catch` block:
+```jsx
+useEffect(() => {
+  const fetchQuestions = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/questions');
+      
+      if (!response) {
+        throw new Error("No server reesponse");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(data);
+    } catch (error) {
+      console.error("Error al cargar las preguntas:", error);
+    }
+  };
+  fetchQuestions();
+}, []);
+```
+
+#### 191.2.08 Adding `useReducer` with `initialState` and dealing with different `status` definition:
+
+**Subsection Summary**
+- **Purpose**: Introduces `useReducer` into `App.jsx` to manage the application's lifecycle state, replacing the need for multiple boolean `useState` flags.
+- **Key Changes**: (1) Import `useReducer` alongside `useEffect`. (2) Define an `initialState` object with `questions: []` and `status: "loading"`. (3) Create an empty `reducer` function (placeholder). (4) Call `useReducer(reducer, initialState)` to get `[state, dispatch]`.
+- **Key Concept**: The `status` field is a **finite state machine** — the app can only be in one of five states at any time: `"loading"`, `"error"`, `"ready"`, `"active"`, or `"finished"`. This eliminates impossible combinations that arise from multiple independent booleans.
+
+```jsx
+/* src/App.jsx */
+import Header from './components/Header'
+import Main from './components/Main'
+import { useEffect, useReducer } from 'react'                           // 👈🏽 ✅ (1)
+const initialState = {                                                  // 👈🏽 ✅ (2)
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+};
+const reducer = (state, action) => {}                                   // 👈🏽 ✅ (2)
+function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);          // 👈🏽 ✅ (1)
+  useEffect( () => {
+    fetch('http://localhost:8000/questions')
+      .then((resp) => resp.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error("Error", error))
+  }, [])
+  return (
+    <div className="app">
+      <Header />
+      <Main>
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
+  )
+}
+export default App;
+```
+
+> Status: 
+
+current application status 
+
+instead of working with `isLoading`, `isError`, `isReady`, `isActive` and `isFinished` using `useState`.
+
+* `loading`: at the beginning of the application and `questions` array is empty.
+* `error`: when any error appears.
+* `ready`: once data has arrived and be ready to start the quiz.
+* `active`: when quiz is actually running.
+* `finished`: once quiz is finished.
+
+#### 191.2.09 Once data has been received, it triggers the `dispatch({ type: "dataReceived", payload: ???})`:
+
+**Subsection Summary**
+- **Purpose**: Implements the `"dataReceived"` action in the reducer and wires the `fetch` success path to dispatch it with the fetched data as the payload.
+- **Key Changes**: (1) Add a `switch(action.type)` in the reducer. (2) Add a `"dataReceived"` case that updates `questions` to `action.payload` and `status` to `"ready"`. (3) Replace `console.log(data)` in the `.then()` chain with `dispatch({ type: "dataReceived", payload: data })`. (4) Add a `default` case that throws an error for unknown actions.
+- **Result**: On successful fetch, state transitions from `{ questions: [], status: "loading" }` to `{ questions: [...15 items], status: "ready" }`.
+- **Screenshot**: Shows React DevTools with the state containing 15 questions and `status: "ready"`.
+
+Focus on different process:
+* different status: `loading`, `error`, `ready`, `active` and `finished`
+* related to data: `dataReceived` so far.
+* questions array which changes right after the `dataReceived`.
+
+```jsx
+/* src/App.jsx */
+import Header from './components/Header'
+import Main from './components/Main'
+import { useEffect, useReducer } from 'react'
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+};
+
+const reducer = (state, action) => {
+  switch(action.type) {                                                           // 👈🏽 ✅ (1)
+    case "dataReceived":                                                          // 👈🏽 ✅ (2)
+      return {
+        ...state,
+        questions: action.payload,                                                // 👈🏽 ✅ (3)
+        status: "ready",                                                          // 👈🏽 ✅ (3)
+      }
+    default:
+      throw new Error("Action Unknown!")                                          // 👈🏽 ✅ (4)
+  }
+}
+
+function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  useEffect( () => {
+    fetch('http://localhost:8000/questions')
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))          {/* 👈🏽 ✅ (2) */}
+      .catch((error) => console.error("Error", error))
+  }, [])
+  return (
+    <div className="app">
+      <Header />
+      <Main>
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
+  )
+}
+
+export default App;
+```
+
+![questions array no empty and status = "ready"](../img/section16-lecture191-004.png)
+
+#### 191.2.10 Once data failed, it triggers the `dispatch({ type: "dataFailed" })`:
+
+**Subsection Summary**
+- **Purpose**: Implements the `"dataFailed"` action in the reducer and replaces the `console.error` in the `.catch()` with a dispatch call.
+- **Key Changes**: (1) Add a `"dataFailed"` case in the reducer that sets `status` to `"error"` while preserving the rest of the state. (2) Replace `console.error("Error", error)` in the `.catch()` with `dispatch({ type: "dataFailed" })`.
+- **Testing**: To simulate the error, stop the `json-server` process and run only `npm run dev:vite`. The `fetch` fails because the API is unreachable, triggering the `.catch()`.
+- **Result**: State transitions to `{ questions: [], status: "error" }`.
+- **Screenshot**: Shows React DevTools with `questions: []` and `status: "error"` when the server is down.
+
+In order to simulate this situation, quit the process from terminal.
+* run from terminal: `npm run dev:vite`
+* go to the application: `http://localhost:5173/`
+* open devtools then go to `Components*`
+
+```jsx
+/* src/App.jsx */
+import Header from './components/Header'
+import Main from './components/Main'
+import { useEffect, useReducer } from 'react'
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+};
+
+const reducer = (state, action) => {
+  switch(action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      }
+
+    case "dataFailed":                                                    // 👈🏽 ✅ (1)
+      return {
+        ...state,
+        status: "error",                                                  // 👈🏽 ✅ (2)
+      }  
+    default:
+      throw new Error("Action Unknown!")
+  }
+}
+
+function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  useEffect( () => {
+    fetch('http://localhost:8000/questions')
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }))                   {/* 👈🏽 ✅ (1) */}
+  }, [])
+  return (
+    <div className="app">
+      <Header />
+      <Main>
+        <p>1/15</p>
+        <p>Question</p>
+      </Main>
+    </div>
+  )
+}
+
+export default App;
+```
+
+![questions array empty and status = "error"](../img/section16-lecture191-005.png)
+
+#### 191.2.11 State Diagram:
+
+**Subsection Summary**
+- **Purpose**: Provides a visual representation of the application's state machine as implemented so far.
+- **Key Detail**: The diagram shows three states (`Loading`, `Ready`, `Error`) and two transitions (`dataReceived`, `dataFailed`). A `retry` transition from `Error` back to `Loading` is shown as a future possibility but is not yet implemented in code.
+- **Pattern**: This is effectively a **finite state machine** — the app is always in exactly one state, and transitions are triggered exclusively by dispatched actions.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Loading
+    Loading: status=loading, questions=[]
+    Loading --> Ready: dataReceived
+    Ready: status=ready, questions=data
+    Loading --> Error: dataFailed
+    Error: status=error, questions=[]
+    Error --> Loading: retry
+```
+
+### 🐞 191.3 Issues:
+| Issue | Status | Log/Error |
+|---|---|---|
+| `fetch` does not reject on HTTP errors (4xx/5xx) | ⚠️ Identified | `src/App.jsx:32-35` — A 404 response from `json-server` would pass through `.then()` without triggering `.catch()`. Should check `response.ok` before parsing JSON. |
+| Error object discarded in `.catch()` | ⚠️ Identified | `src/App.jsx:35` — `dispatch({ type: "dataFailed" })` ignores the `error` parameter. No error details stored in state for debugging or user display. |
+| `state` not consumed in JSX | ℹ️ Informational | `src/App.jsx:37-44` — `state.questions` and `state.status` are managed by the reducer but the UI still renders hardcoded placeholder text. Expected to be addressed in the next lesson. |
+| Typo `"reesponse"` in async/await example | ℹ️ Low Priority | 191.2.07 alternative code block — `"No server reesponse"` should be `"No server response"`. |
+| `Loader`/`Error` components not rendered conditionally | ℹ️ Informational | `src/components/Loader.jsx`, `src/components/Error.jsx` — These components exist but are not yet imported or used in `App.jsx`. Expected in a future lesson. |
+| Typo `"fecthing"` in `Error` component | ⚠️ Identified (from Lesson 190) | `src/components/Error.jsx:4` — `"There was an error fecthing questions."` should be `"fetching"`. |
+| Typo `"concurrenctly"` in docs | ℹ️ Low Priority | 191.2.05 instruction text — `"Install concurrenctly"` should be `"Install concurrently"`. |
+
+### 🧱 191.4 Pending Fixes (TODO)
+
+- [ ] Add `response.ok` validation in the `fetch` chain before calling `resp.json()` to properly handle HTTP error status codes (`src/App.jsx:32-33`).
+- [ ] Pass the `error` object as a payload in the `"dataFailed"` dispatch: `dispatch({ type: "dataFailed", payload: error.message })` and store it in state for user-facing error messages (`src/App.jsx:35`).
+- [ ] Destructure `state` into `{ questions, status }` in `App.jsx` and conditionally render the `Loader` component (when `status === "loading"`) and the `Error` component (when `status === "error"`) inside `<Main>` (`src/App.jsx:30,37-44`).
+- [ ] Fix typo `"fecthing"` → `"fetching"` in `src/components/Error.jsx:4`.
+- [ ] Fix typo `"reesponse"` → `"response"` in the async/await alternative code example (191.2.07 documentation).
+- [ ] Fix typo `"concurrenctly"` → `"concurrently"` in the 191.2.05 instruction text (documentation).
+- [ ] Consider defining status constants (e.g., `const STATUS = { LOADING: "loading", ERROR: "error", READY: "ready", ACTIVE: "active", FINISHED: "finished" }`) to avoid typo-prone string literals in the reducer and conditional rendering (`src/App.jsx`).
+- [ ] Consider adding an `AbortController` to the `useEffect` fetch to properly cancel the request if the component unmounts before the response arrives (`src/App.jsx:31-36`).
+
+[↑ top - 191. Lesson 191 — *Loading Questions from a Fake API*](#-191-lesson-191---loading-questions-from-a-fake-api)
+
+
 
 
 
