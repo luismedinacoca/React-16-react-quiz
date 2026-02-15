@@ -2304,6 +2304,272 @@ export default StartScreen;
 [↑ top - 192. Lesson 192 — *Handling Loading, Error, and Ready Status*](#-192-lesson-192---handling-loading-error-and-ready-status)
 
 
+<br>
+
+## 🔧 193. Lesson 193 — *Starting a New Quiz*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [193. Lesson 193 — *Starting a New Quiz*](#-193-lesson-193---starting-a-new-quiz)
+- [193.1 Context](#1931-context)
+- [193.2 Updating code according the context](#1932-updating-code-according-the-context)
+  - [193.2.1 Create a placeholder `Question` component](#19321-create-a-placeholder-question-component)
+  - [193.2.2 Import `Question` and conditionally render it for `active` status](#19322-import-question-and-conditionally-render-it-for-active-status)
+  - [193.2.3 Add `"start"` case to reducer and pass `dispatch` to `StartScreen`](#19323-add-start-case-to-reducer-and-pass-dispatch-to-startscreen)
+  - [193.2.4 Wire the `StartScreen` button to dispatch `{ type: 'start' }`](#19324-wire-the-startscreen-button-to-dispatch--type-start-)
+- [193.3 Issues](#1933-issues)
+- [193.4 Pending Fixes (TODO)](#1934-pending-fixes-todo)
+
+### 🧠 193.1 Context:
+
+This lesson continues from Lesson 192, where the conditional rendering for `"loading"`, `"error"`, and `"ready"` statuses was fully wired up and the `StartScreen` component displayed a "Let's start" button — but the button had **no `onClick` handler**. The quiz could not transition from the start screen to the first question. This lesson closes that gap by (1) creating a `Question` placeholder component, (2) adding a new `"active"` status rendering path, (3) implementing a `"start"` action in the reducer, and (4) wiring the button in `StartScreen` to dispatch that action.
+
+**Key Concepts:**
+
+1. **Reducer action expansion**: The existing reducer already handles `"dataReceived"` and `"dataFailed"`. This lesson adds a third case, `"start"`, which transitions `status` from `"ready"` to `"active"`. Each new user interaction maps to a new action type — this keeps the state machine explicit and predictable.
+2. **Lifting dispatch down via props**: Instead of creating a separate callback function in `App` and passing it to `StartScreen`, the entire `dispatch` function is passed as a prop. The child component then calls `dispatch({ type: 'start' })` directly. This is a common pattern with `useReducer` — it avoids creating wrapper functions and makes the action intent visible at the call site.
+3. **Status-driven screen transitions**: The `status` field acts as a finite state machine with well-defined transitions: `"loading"` → `"ready"` (on data) or `"error"` (on failure), then `"ready"` → `"active"` (on user click). Each status maps to exactly one component, ensuring mutually exclusive rendering.
+4. **Placeholder components**: The `Question` component is created as a minimal scaffold. Its only purpose at this stage is to confirm the screen transition works. Actual question logic is deferred to future lessons.
+
+**Advantages:**
+- Passing `dispatch` directly avoids the need for intermediate handler functions in `App`, reducing boilerplate.
+- The `"start"` action is a simple, self-documenting string that makes the state transition easy to trace in the reducer.
+- The `Question` placeholder allows end-to-end testing of the screen flow without building the full question UI.
+- All transitions remain in a single reducer `switch` block, providing a centralized overview of every possible state change.
+
+**Disadvantages / Gotchas:**
+- Passing `dispatch` directly to children couples them to the reducer's action shape. If the action type `"start"` is renamed later, `StartScreen` must also be updated. An intermediate handler (`handleStart`) in `App` would isolate this.
+- The `Question` component renders a bare `<div>` with no semantic structure or accessibility attributes — acceptable for a placeholder, but must be addressed before production.
+- The `"start"` case only changes `status` — it does not initialize any quiz-specific state (e.g., `index`, `points`). This means subsequent lessons must modify the same case, which can introduce regressions if not careful.
+- String-based action types remain typo-prone. A constants file or TypeScript literal union would provide compile-time safety.
+
+**When to Consider Alternatives:**
+- If the number of actions grows large, consider an **action creator** pattern: `const start = () => ({ type: 'start' })` — this centralizes action shapes and is easier to refactor.
+- For deeply nested component trees, passing `dispatch` through multiple levels becomes prop-drilling. In that case, a **context provider** wrapping `dispatch` (via `useContext`) is preferable.
+- If screen transitions become complex (conditional guards, async transitions), a dedicated state machine library like **XState** can formalize the transitions with guards and side effects.
+
+### ⚙️ 193.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Enable the user to start the quiz by clicking "Let's start", transitioning the app from the `"ready"` status to `"active"` and rendering the `Question` component.
+- **Problem**: In Lesson 192, the `StartScreen` button existed but had no functionality — clicking it did nothing because there was no `onClick` handler and no `"start"` action in the reducer.
+- **Connection**: The subsections build the feature incrementally:
+    1. Create a placeholder `Question` component (193.2.1).
+    2. Import `Question` in `App.jsx` and conditionally render it when `status === "active"` (193.2.2).
+    3. Add the `"start"` case to the reducer and pass `dispatch` to `StartScreen` (193.2.3).
+    4. Accept `dispatch` in `StartScreen` and wire the button's `onClick` to dispatch `{ type: 'start' }` (193.2.4).
+
+#### 193.2.1 Create a placeholder `Question` component:
+
+**Subsection Summary**
+- **Purpose**: Scaffolds a minimal `Question` component that will eventually display quiz questions. At this stage it renders only a static heading as a placeholder.
+- **File**: Created as `src/components/Question.jsx`.
+- **Pattern**: Simple presentational component — no props, no state, no side effects. Uses an arrow function (`const`) export pattern.
+- **Role**: Provides a visual confirmation that the screen transition to `"active"` status works correctly before the full question UI is implemented.
+
+```jsx
+/* src/components/Question.jsx */
+const Question = () => {
+  return (
+    <div>
+      <h1>Question</h1>
+    </div>
+  )
+}
+export default Question
+```
+
+#### 193.2.2 Import `Question` and conditionally render it for `active` status:
+
+**Subsection Summary**
+- **Purpose**: Adds the `Question` component to the conditional rendering chain in `App.jsx`, making it render when `status === "active"`.
+- **Key Changes**: (1) Import `Question` from `./components/Question`. (2) Add `{status === "active" && <Question />}` inside `<Main>`, following the same `&&` short-circuit pattern used for all other statuses.
+- **Open Questions**: At this point the button still has no handler — the questions "How do we set this status to `active`?" and "How do we start the game?" are posed to motivate the next steps.
+- **Note**: The reducer has no `"start"` case yet, so clicking the button does nothing. The rendering path exists but is unreachable.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";   // 👈🏽 ✅ (1)
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [{ questions, status }, dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && <StartScreen numQuestions={numQuestions} />}
+        {status === "active" && <Question />}   {/* 👈🏽 ✅ (1) */}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+* How do we set this status to `active`?
+* How do we start the game?
+
+#### 193.2.3 Add `"start"` case to reducer and pass `dispatch` to `StartScreen`:
+
+**Subsection Summary**
+- **Purpose**: Implements the state transition that makes the quiz startable — adds a `"start"` case to the reducer that sets `status` to `"active"`, and passes the `dispatch` function as a prop to `StartScreen` so the child can trigger the transition.
+- **Key Changes in the reducer**: (1) Add `case 'start'` that returns `{ ...state, status: 'active' }`. This is the mechanism that answers the question from 193.2.2: dispatching `{ type: 'start' }` transitions the app from the start screen to the question screen.
+- **Key Changes in JSX**: (2) The `<StartScreen>` rendering block is reformatted to a multi-line JSX expression to accommodate the new `dispatch` prop: `<StartScreen numQuestions={numQuestions} dispatch={dispatch} />`.
+- **Pattern**: Passing `dispatch` directly (rather than a wrapper function like `handleStart`) is a common `useReducer` convention — it keeps `App` lean and lets the child decide which action to dispatch.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':                                           // 👈🏽 ✅ (1)
+      return {
+        ...state,
+        status: 'active'
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [{ questions, status }, dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch}                                 // 👈🏽 ✅ (2)
+          />
+        }
+        {status === "active" && <Question />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 193.2.4 Wire the `StartScreen` button to dispatch `{ type: 'start' }`:
+
+**Subsection Summary**
+- **Purpose**: Completes the feature by accepting the `dispatch` prop in `StartScreen` and attaching an `onClick` handler to the "Let's start" button that dispatches the `"start"` action.
+- **Key Changes**: (1) Destructure `dispatch` from props alongside `numQuestions`. (2) Add `onClick={() => dispatch({ type: 'start' })}` to the `<button>` element.
+- **Result**: Clicking "Let's start" dispatches `{ type: 'start' }` → the reducer sets `status` to `"active"` → the `StartScreen` unmounts and the `Question` placeholder renders in its place. The full start-to-question screen transition is now functional.
+- **Observation**: The inline arrow function `() => dispatch({ type: 'start' })` is acceptable here because it's a simple one-liner. For more complex handlers, extracting a named `handleStart` function would improve readability.
+
+```jsx
+/* src/components/StartScreen.jsx */
+function StartScreen({ numQuestions, dispatch }) {          // 👈🏽 ✅ (1)
+  return (
+    <div className="start">
+      <h2>Welcome to The React Quiz!</h2>
+      <h3>{numQuestions} questions to test your React ,mastery</h3>
+      <button
+        className="btn btn-ui"
+        onClick={() => dispatch({ type: 'start' })}>        {/* 👈🏽 ✅ (2) */}
+        Let's start
+      </button>
+    </div>
+  );
+}
+export default StartScreen;
+```
+
+### 🐞 193.3 Issues:
+
+- **Passing `dispatch` directly to child**: Couples `StartScreen` to the reducer's action shape (`"start"`). If the action type changes, `StartScreen` must also be updated.
+- **`Question` component lacks semantic HTML**: Renders a bare `<div>` with a heading — no `className`, no accessibility attributes.
+- **Typo persists in `StartScreen`**: The `",mastery"` typo identified in Lesson 192 is still present.
+- **No quiz-specific state initialization in `"start"` case**: The reducer only changes `status` — it does not set an initial question index, score, or answer state.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| `dispatch` passed directly to `StartScreen` | ℹ️ Informational | `src/App.jsx:57` — Passing `dispatch` as a prop couples the child to the reducer's action type strings. A wrapper handler like `handleStart` in `App` would decouple them. |
+| `Question` placeholder has no `className` or accessibility | ⚠️ Identified | `src/components/Question.jsx:3-5` — The `<div>` and `<h1>` lack `className` for styling and `role`/`aria-*` attributes for accessibility. |
+| Typo `",mastery"` still present | ⚠️ Identified (from Lesson 192) | `src/components/StartScreen.jsx:5` — `"to test your React ,mastery"` has a stray comma before "mastery". Should be `"to test your React mastery"`. |
+| `"start"` case does not initialize quiz state | ℹ️ Informational | `src/App.jsx:28-32` — The `"start"` case only sets `status: 'active'` but does not initialize `index`, `points`, or `answer`. Expected to be addressed in future lessons when question navigation is implemented. |
+| Mixed quote style in reducer cases | ℹ️ Low Priority | `src/App.jsx:16-31` — `"dataReceived"` and `"dataFailed"` use double quotes, but `'start'` uses single quotes. Inconsistent string delimiters reduce readability. |
+
+### 🧱 193.4 Pending Fixes (TODO)
+
+- [ ] Fix typo `",mastery"` → `"mastery"` (remove stray comma) in `src/components/StartScreen.jsx:5`.
+- [ ] Add `className="question"` to the `Question` component's wrapper `<div>` for consistent styling (`src/components/Question.jsx:3`).
+- [ ] Add accessibility attributes to the "Let's start" button: `aria-label="Start the quiz"` and `tabIndex={0}` (`src/components/StartScreen.jsx:6-8`).
+- [ ] Normalize quote style in reducer action type strings — use double quotes consistently for `'start'` → `"start"` (`src/App.jsx:28`).
+- [ ] Consider extracting a `handleStart` callback in `App` instead of passing `dispatch` directly, to decouple `StartScreen` from the reducer's action shape (`src/App.jsx:55-58`).
+- [ ] Extend the `"start"` case to initialize quiz-specific state (e.g., `index: 0`, `points: 0`, `answer: null`) when question navigation is implemented in future lessons (`src/App.jsx:28-32`).
+
+[↑ top - 193. Lesson 193 — *Starting a New Quiz*](#-193-lesson-193---starting-a-new-quiz)
+
 
 
 
