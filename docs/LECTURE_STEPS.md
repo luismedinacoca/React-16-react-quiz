@@ -7,13 +7,13 @@
 
 ## 🔧 187. Lesson 187 — *Yet Another Hook: useReducer*
 
-- [187. Lesson 187 — *Yet Another Hook: useReducer*](#-187-lesson-187---yet-another-hook-usereducer)
+- [187. Lesson 187 — *Yet Another Hook: useReducer*](#187-lesson-187-yet-another-hook-usereducer)
 - [187.1 Context](#1871-context)
-- [187.2 Updating code according the context](#1872-updating-code-according-the-context)
+- [187.2 Updating code according the context](#1872-updating-codetheory-according-the-context)
   - [187.2.1 Start from scratch the `App.jsx` component then import `DateCounter` component](#18721-start-from-scratch-the-appjsx-component-then-import-datecounter-component)
   - [187.2.2 Initial `DateCounter` component](#18722-initial-datecounter-component)
   - [187.2.3 Adding `useReducer` hook in `DateCounter` component](#18723-adding-usereducer-hook-in-datecounter-component)
-  - [187.2.4 Adding `dispatch(1)` in `inc` & `dispatch(-1)` in `dec` functions](#18724-adding-dispatch1-in-inc--dispatch-1-in-dec-functions)
+  - [187.2.4 Adding `dispatch(1)` in `inc` & `dispatch(-1)` in `dec` functions](#18724-adding-dispatch1-in-inc-dispatch-1-in-dec-functions)
   - [187.2.5 Working with setting a value or `defineCount` function](#18725-working-with-setting-a-value-or-definecount-function)
   - [187.2.6 Thinking about passing an object in each dispatch and named actions](#18726-thinking-about-passing-an-object-in-each-dispatch-and-named-actions)
   - [187.2.7 Simplifying `useReducer` in `reducer` function](#18727-simplifying-usereducer-in-reducer-function)
@@ -591,19 +591,19 @@ export default DateCounter;
 - [ ] Move `step` state into the `useReducer` to fully centralize state management.
 - [ ] Implement `reset` functionality using the reducer.
 
-[↑ top - 187. Lesson 187 — *Yet Another Hook: useReducer*](#-187-lesson-187---yet-another-hook-usereducer)
+[↑ top - 187. Lesson 187 — *Yet Another Hook: useReducer*](#187-lesson-187-yet-another-hook-usereducer)
 
 
 <br>
 
 ## 🔧 188. Lesson 188 — *Managing Related Pieces of State*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [188. Lesson 188 — *Managing Related Pieces of State*](#-188-lesson-188---managing-related-pieces-of-state)
+- [188. Lesson 188 — *Managing Related Pieces of State*](#188-lesson-188-managing-related-pieces-of-state)
 - [188.1 Context](#1881-context)
-- [188.2 Updating code according the context](#1882-updating-code-according-the-context)
+- [188.2 Updating code according the context](#1882-updating-codetheory-according-the-context)
   - [188.2.1 Incorporate the `step` into the built `Reducer` function](#18821-incorporate-the-step-into-the-built-reducer-function)
   - [188.2.2 Working on `Reducer` function return value](#18822-working-on-reducer-function-return-value)
   - [188.2.3 Complete the `Reducer` function](#18823-complete-the-reducer-function)
@@ -957,18 +957,18 @@ export default DateCounter;
 - [ ] Consider adding an `aria-label` and `aria-valuemin`/`aria-valuemax`/`aria-valuenow` to the count `<input>` for improved accessibility.
 - [ ] Rename event handler functions to follow the `handle` prefix convention: `dec` → `handleDecrement`, `inc` → `handleIncrement`, `defineCount` → `handleCountChange`, `defineStep` → `handleStepChange`, `reset` → `handleReset`.
 
-[↑ top - 188. Lesson 188 — *Managing Related Pieces of State*](#-188-lesson-188---managing-related-pieces-of-state)
+[↑ top - 188. Lesson 188 — *Managing Related Pieces of State*](#188-lesson-188-managing-related-pieces-of-state)
 
 <br>
 
 ## 🔧 189. Lesson 189 — *Managing State With useReducer*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [189. Lesson 189 — *Managing State With useReducer*](#-189-lesson-189---managing-state-with-usereducer)
+- [189. Lesson 189 — *Managing State With useReducer*](#189-lesson-189-managing-state-with-usereducer)
 - [189.1 Context](#1891-context)
-- [189.2 Updating code according the context](#1892-updating-code-according-the-context)
+- [189.2 Updating code according the context](#1892-updating-codetheory-according-the-context)
   - [189.2.1 **Why** useReducer?](#18921-why-usereducer)
   - [189.2.2 **Managing state** with `useReducer`](#18922-managing-state-with-usereducer)
   - [189.2.3 **How** reducers update state](#18923-how-reducers-update-state)
@@ -1109,19 +1109,19 @@ This analogy maps exactly to the `useReducer` flow:
 - [ ] Review the `DateCounter` reducer's `default` case to ensure the error message includes `action.type` for debuggability, matching best practices shown conceptually in this lesson (`src/components/DateCounter.jsx`).
 - [ ] Consider creating a standalone markdown cheat-sheet summarizing the `useReducer` API, flow diagram, and bank analogy for quick reference.
 
-[↑ top - 189. Lesson 189 — *Managing State With useReducer*](#-189-lesson-189---managing-state-with-usereducer)
+[↑ top - 189. Lesson 189 — *Managing State With useReducer*](#189-lesson-189-managing-state-with-usereducer)
 
 
 <br>
 
 ## 🔧 190. Lesson 190 — *The "React Quiz" App*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [190. Lesson 190 — *The "React Quiz" App*](#-190-lesson-190---the-react-quiz-app)
+- [190. Lesson 190 — *The "React Quiz" App*](#190-lesson-190-the-react-quiz-app)
 - [190.1 Context](#1901-context)
-- [190.2 Updating code according the context](#1902-updating-code-according-the-context)
+- [190.2 Updating code according the context](#1902-updating-codetheory-according-the-context)
   - [190.2.1 Import the `Header` component in `App`](#19021-import-the-header-component-in-app)
   - [190.2.2 Create `Main` component](#19022-create-main-component)
   - [190.2.3 Import `Main` component to `App`](#19023-import-main-component-to-app)
@@ -1266,29 +1266,29 @@ export default App
 - [ ] Remove commented-out `DateCounter` import and JSX in `src/App.jsx:1,8` once no longer needed for reference.
 - [ ] Replace placeholder `<p>` tags in `App.jsx` with dynamic quiz components in upcoming lessons.
 
-[↑ top - 190. Lesson 190 — *The "React Quiz" App*](#-190-lesson-190---the-react-quiz-app)
+[↑ top - 190. Lesson 190 — *The "React Quiz" App*](#190-lesson-190-the-react-quiz-app)
 
 
 <br>
 
 ## 🔧 191. Lesson 191 — *Loading Questions from a Fake API*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [191. Lesson 191 — *Loading Questions from a Fake API*](#-191-lesson-191---loading-questions-from-a-fake-api)
+- [191. Lesson 191 — *Loading Questions from a Fake API*](#191-lesson-191-loading-questions-from-a-fake-api)
 - [191.1 Context](#1911-context)
-- [191.2 Updating code according the context](#1912-updating-code-according-the-context)
-  - [191.2.01 Create `Data` folder then put inside the `questions.json` file](#19121-create-data-folder-then-put-inside-the-questionsjson-file)
-  - [191.2.02 Create a fake-api installing `json-server`](#19122-create-a-fake-api-installing-json-server)
-  - [191.2.03 Add a new npm script for running the `data/questions.json` file](#19123-add-a-new-npm-script-for-running-the-dataquestionsjson-file)
-  - [191.2.04 Run from terminal](#19124-run-from-terminal)
-  - [191.2.05 Merging `npm run dev` with `npm run server`](#19125-merging-npm-run-dev-with-npm-run-server)
-  - [191.2.06 Another merging option without installing anything previously](#19126-another-merging-option-without-installing-anything-previously)
-  - [191.2.07 Add `useEffect` hook for reading the json-server (`fake-api`) server](#19127-add-useeffect-hook-for-reading-the-json-server-fake-api-server)
-  - [191.2.08 Adding `useReducer` with `initialState` and dealing with different `status` definition](#19128-adding-usereducer-with-initialstate-and-dealing-with-different-status-definition)
-  - [191.2.09 Once data has been received, it triggers `dispatch({ type: "dataReceived" })`](#19129-once-data-has-been-received-it-triggers-dispatch-type-datareceived-)
-  - [191.2.10 Once data failed, it triggers `dispatch({ type: "dataFailed" })`](#191210-once-data-failed-it-triggers-dispatch-type-datafailed-)
+- [191.2 Updating code according the context](#1912-updating-codetheory-according-the-context)
+  - [191.2.01 Create `Data` folder then put inside the `questions.json` file](#191201-create-data-folder-then-put-inside-the-questionsjson-file)
+  - [191.2.02 Create a fake-api installing `json-server`](#191202-create-a-fake-api-installing-json-server)
+  - [191.2.03 Add a new npm script for running the `data/questions.json` file](#191203-add-a-new-npm-script-for-running-the-dataquestionsjson-file)
+  - [191.2.04 Run from terminal](#191204-run-from-terminal)
+  - [191.2.05 Merging `npm run dev` with `npm run server`](#191205-merging-npm-run-dev-with-npm-run-server)
+  - [191.2.06 Another merging option without installing anything previously](#191206-another-merging-option-npm-run-dev-with-npm-run-server-without-installing-anything-previously)
+  - [191.2.07 Add `useEffect` hook for reading the json-server (`fake-api`) server](#191207-add-useeffect-hook-for-reading-the-json-server-fake-api-server)
+  - [191.2.08 Adding `useReducer` with `initialState` and dealing with different `status` definition](#191208-adding-usereducer-with-initialstate-and-dealing-with-different-status-definition)
+  - [191.2.09 Once data has been received, it triggers `dispatch({ type: "dataReceived" })`](#191209-once-data-has-been-received-it-triggers-the-dispatch-type-datareceived-payload)
+  - [191.2.10 Once data failed, it triggers `dispatch({ type: "dataFailed" })`](#191210-once-data-failed-it-triggers-the-dispatch-type-datafailed)
   - [191.2.11 State Diagram](#191211-state-diagram)
 - [191.3 Issues](#1913-issues)
 - [191.4 Pending Fixes (TODO)](#1914-pending-fixes-todo)
@@ -1925,7 +1925,7 @@ stateDiagram-v2
 - [ ] Consider defining status constants (e.g., `const STATUS = { LOADING: "loading", ERROR: "error", READY: "ready", ACTIVE: "active", FINISHED: "finished" }`) to avoid typo-prone string literals in the reducer and conditional rendering (`src/App.jsx`).
 - [ ] Consider adding an `AbortController` to the `useEffect` fetch to properly cancel the request if the component unmounts before the response arrives (`src/App.jsx:31-36`).
 
-[↑ top - 191. Lesson 191 — *Loading Questions from a Fake API*](#-191-lesson-191---loading-questions-from-a-fake-api)
+[↑ top - 191. Lesson 191 — *Loading Questions from a Fake API*](#191-lesson-191-loading-questions-from-a-fake-api)
 
 
 
@@ -1933,16 +1933,16 @@ stateDiagram-v2
 
 ## 🔧 192. Lesson 192 — *Handling Loading, Error, and Ready Status*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [192. Lesson 192 — *Handling Loading, Error, and Ready Status*](#-192-lesson-192---handling-loading-error-and-ready-status)
+- [192. Lesson 192 — *Handling Loading, Error, and Ready Status*](#192-lesson-192-handling-loading-error-and-ready-status)
 - [192.1 Context](#1921-context)
-- [192.2 Updating code according the context](#1922-updating-code-according-the-context)
-  - [192.2.1 Destructure `state` inline and conditionally render `<Loader />` for `loading` status](#19221-destructure-state-inline-and-conditionally-render-loader--for-loading-status)
-  - [192.2.2 Import and conditionally render `<Error />` for `error` status](#19222-import-and-conditionally-render-error--for-error-status)
+- [192.2 Updating code according the context](#1922-updating-codetheory-according-the-context)
+  - [192.2.1 Destructure `state` inline and conditionally render `<Loader />` for `loading` status](#19221-destructure-state-inline-and-conditionally-render-loader-for-loading-status)
+  - [192.2.2 Import and conditionally render `<Error />` for `error` status](#19222-import-and-conditionally-render-error-for-error-status)
   - [192.2.3 Create the `StartScreen` component](#19223-create-the-startscreen-component)
-  - [192.2.4 Import and conditionally render `<StartScreen />` for `ready` status](#19224-import-and-conditionally-render-startscreen--for-ready-status)
+  - [192.2.4 Import and conditionally render `<StartScreen />` for `ready` status](#19224-import-and-conditionally-render-startscreen-for-ready-status)
   - [192.2.5 Pass `numQuestions` prop to `StartScreen` and display the question count](#19225-pass-numquestions-prop-to-startscreen-and-display-the-question-count)
 - [192.3 Issues](#1923-issues)
 - [192.4 Pending Fixes (TODO)](#1924-pending-fixes-todo)
@@ -2301,23 +2301,23 @@ export default StartScreen;
 - [ ] Consider extracting the conditional rendering into a helper function or render map (e.g., `const SCREENS = { loading: <Loader />, error: <Error />, ready: <StartScreen /> }`) to improve scalability as more statuses are added (`src/App.jsx:46-48`).
 - [ ] Wire up the `"Let's start"` button `onClick` handler to dispatch a `"start"` action that transitions `status` from `"ready"` to `"active"` (expected in a future lesson).
 
-[↑ top - 192. Lesson 192 — *Handling Loading, Error, and Ready Status*](#-192-lesson-192---handling-loading-error-and-ready-status)
+[↑ top - 192. Lesson 192 — *Handling Loading, Error, and Ready Status*](#192-lesson-192-handling-loading-error-and-ready-status)
 
 
 <br>
 
 ## 🔧 193. Lesson 193 — *Starting a New Quiz*
 
-[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
 
 ### 📑 Table of Contents:
-- [193. Lesson 193 — *Starting a New Quiz*](#-193-lesson-193---starting-a-new-quiz)
+- [193. Lesson 193 — *Starting a New Quiz*](#193-lesson-193-starting-a-new-quiz)
 - [193.1 Context](#1931-context)
-- [193.2 Updating code according the context](#1932-updating-code-according-the-context)
+- [193.2 Updating code according the context](#1932-updating-codetheory-according-the-context)
   - [193.2.1 Create a placeholder `Question` component](#19321-create-a-placeholder-question-component)
   - [193.2.2 Import `Question` and conditionally render it for `active` status](#19322-import-question-and-conditionally-render-it-for-active-status)
   - [193.2.3 Add `"start"` case to reducer and pass `dispatch` to `StartScreen`](#19323-add-start-case-to-reducer-and-pass-dispatch-to-startscreen)
-  - [193.2.4 Wire the `StartScreen` button to dispatch `{ type: 'start' }`](#19324-wire-the-startscreen-button-to-dispatch--type-start-)
+  - [193.2.4 Wire the `StartScreen` button to dispatch `{ type: 'start' }`](#19324-wire-the-startscreen-button-to-dispatch-type-start)
 - [193.3 Issues](#1933-issues)
 - [193.4 Pending Fixes (TODO)](#1934-pending-fixes-todo)
 
@@ -2544,12 +2544,11 @@ function StartScreen({ numQuestions, dispatch }) {          // 👈🏽 ✅ (1)
 export default StartScreen;
 ```
 
-### 🐞 193.3 Issues:
+After clicking on `Let's Start` button
 
-- **Passing `dispatch` directly to child**: Couples `StartScreen` to the reducer's action shape (`"start"`). If the action type changes, `StartScreen` must also be updated.
-- **`Question` component lacks semantic HTML**: Renders a bare `<div>` with a heading — no `className`, no accessibility attributes.
-- **Typo persists in `StartScreen`**: The `",mastery"` typo identified in Lesson 192 is still present.
-- **No quiz-specific state initialization in `"start"` case**: The reducer only changes `status` — it does not set an initial question index, score, or answer state.
+![Question component displayed - no question dispalyed yet](../img/section16-lecture193-001.png)
+
+### 🐞 193.3 Issues:
 
 | Issue | Status | Log/Error |
 |---|---|---|
@@ -2568,10 +2567,279 @@ export default StartScreen;
 - [ ] Consider extracting a `handleStart` callback in `App` instead of passing `dispatch` directly, to decouple `StartScreen` from the reducer's action shape (`src/App.jsx:55-58`).
 - [ ] Extend the `"start"` case to initialize quiz-specific state (e.g., `index: 0`, `points: 0`, `answer: null`) when question navigation is implemented in future lessons (`src/App.jsx:28-32`).
 
-[↑ top - 193. Lesson 193 — *Starting a New Quiz*](#-193-lesson-193---starting-a-new-quiz)
+[↑ top - 193. Lesson 193 — *Starting a New Quiz*](#193-lesson-193-starting-a-new-quiz)
 
+<br>
 
+## 🔧 194. Lesson 194 — *Displaying Questions*
 
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [194. Lesson 194 — *Displaying Questions*](#194-lesson-194-displaying-questions)
+- [194.1 Context](#1941-context)
+- [194.2 Updating code according the context](#1942-updating-codetheory-according-the-context)
+  - [194.2.1 Add `index` to `initialState` and pass `questions[index]` to `Question`](#19421-add-index-to-initialstate-and-pass-questionsindex-to-question)
+  - [194.2.2 Build the `Question` component with inline options rendering](#19422-build-the-question-component-with-inline-options-rendering)
+  - [194.2.3 Scaffold the `Options` component (prop placeholder)](#19423-scaffold-the-options-component-prop-placeholder)
+  - [194.2.4 Refactor `Question` to delegate options rendering to `Options`](#19424-refactor-question-to-delegate-options-rendering-to-options)
+  - [194.2.5 Accept `question` prop in `Options` component](#19425-accept-question-prop-in-options-component)
+- [194.3 Issues](#1943-issues)
+- [194.4 Pending Fixes (TODO)](#1944-pending-fixes-todo)
+
+### 🧠 194.1 Context:
+
+This lesson picks up from Lesson 193, where the quiz could transition from the `"ready"` start screen to an `"active"` status that rendered a bare `Question` placeholder. The placeholder confirmed the screen transition but displayed no real data. This lesson closes that gap by (1) adding an `index` property to the reducer state to track the current question, (2) passing `questions[index]` as a prop to `Question`, (3) building the question UI with its answer option buttons, and (4) extracting the options list into a dedicated `Options` child component for better separation of concerns.
+
+**Key Concepts:**
+
+1. **State-driven data access via `index`**: Instead of passing the entire `questions` array to `Question`, a single `index` integer in the reducer state determines which question object to pass. This keeps the child component unaware of the array and focused solely on rendering one question — a clean separation of data selection (parent) and data presentation (child).
+2. **Prop drilling for data**: The `question` object flows `App → Question → Options`. Each component receives only the data it needs. `Question` renders the question text; `Options` renders the answer buttons. This follows the React convention of unidirectional data flow.
+3. **Component extraction / decomposition**: The options list starts as inline JSX inside `Question` and is then extracted into a standalone `Options` component. This is a core React pattern — start with everything in one component, identify a logical unit, extract it, and pass data via props.
+4. **Array `.map()` for dynamic lists**: `question.options.map(option => ...)` renders a `<button>` for each answer option. The `key` prop is set to the option string itself, which works as long as options are unique within each question.
+5. **Incremental refactoring workflow**: The lesson demonstrates the typical development cycle: build it inline first (194.2.2), then extract into a separate component (194.2.3–194.2.5). This lets you verify correctness before restructuring.
+
+**Advantages:**
+- Tracking the current question via `index` in the reducer centralizes navigation logic and makes it trivial to advance to the next question later (just increment `index`).
+- Extracting `Options` creates a reusable, testable unit that can evolve independently (e.g., adding answer highlighting, disabling after selection).
+- Passing a single `question` object rather than the full array minimizes the data surface each child component depends on.
+- The `.map()` pattern produces a clean, declarative list of buttons that mirrors the data shape.
+
+**Disadvantages / Gotchas:**
+- Using the option string as the `key` prop assumes all options within a question are unique. Duplicate option text would cause React key collisions and rendering bugs.
+- `console.log(question)` is left in `Question` for debugging but should be removed before production.
+- The `Options` component currently receives the entire `question` object but only uses `question.options`. Passing just the `options` array would make the component's API narrower and clearer.
+- There is no guard for an out-of-bounds `index` — if `index >= questions.length`, `questions[index]` is `undefined` and the app would crash when accessing `question.question`.
+
+**When to Consider Alternatives:**
+- If the option list grows complex (images, explanations, multi-select), consider rendering each option via a dedicated `Option` (singular) component rather than inline buttons inside `Options`.
+- For large question sets, consider lazy-loading questions or paginating them instead of holding all in memory.
+- If prop drilling becomes deeper (e.g., `App → Question → Options → Option`), a React Context or state management library would reduce boilerplate.
+
+### ⚙️ 194.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Display the current quiz question with its answer option buttons, transitioning from the bare placeholder `Question` component created in Lesson 193 to a fully data-driven question UI.
+- **Problem**: After Lesson 193, clicking "Let's start" rendered a static `<h1>Question</h1>` placeholder. No actual question data was displayed because `Question` received no props and the reducer had no `index` to select a question.
+- **Connection**: The subsections build the feature incrementally:
+    1. Add `index: 0` to `initialState` and pass `questions[index]` to `Question` (194.2.1).
+    2. Build the `Question` component with inline options rendering to verify the data flows correctly (194.2.2).
+    3. Scaffold a new `Options` component, initially with an unclear prop signature (194.2.3).
+    4. Refactor `Question` to import and delegate options rendering to `Options`, commenting out the inline version (194.2.4).
+    5. Accept the `question` prop in `Options` to complete the extraction (194.2.5).
+
+#### 194.2.1 Add `index` to `initialState` and pass `questions[index]` to `Question`:
+
+**Subsection Summary**
+- **Purpose**: Introduces an `index` property in the reducer's `initialState` to track which question is currently displayed, and updates `App` to pass the selected question object to `Question`.
+- **Key Changes**: (1) `index: 0` added to `initialState`. (2) `index` destructured alongside `questions` and `status` from `useReducer`. (3) `<Question question={questions[index]}/>` replaces the prop-less `<Question />`.
+- **Pattern**: State-driven data selection — the parent selects the data via `index` and the child receives a single item, keeping rendering logic simple.
+- **Role**: This is the foundational wiring that makes all subsequent subsections possible — without `index`, there is no way to select a question from the array.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,           // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [{ questions, status, index }, dispatch] = useReducer(reducer, initialState);         // 👈🏽 ✅ (2)
+  const numQuestions = questions.length;
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" && <Question question={questions[index]}/>}                      {/* 👈🏽 ✅ (3) */}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 194.2.2 Build the `Question` component with inline options rendering:
+
+**Subsection Summary**
+- **Purpose**: Transforms the `Question` placeholder into a data-driven component that displays the question text and renders answer option buttons directly (inline) using `.map()`.
+- **Key Changes**: (1) Destructures `question` from props. (2) Renders `question.question` inside an `<h4>`. (3) Maps over `question.options` to produce `<button>` elements with `className="btn btn-option"`. (4) Each button displays the option text.
+- **Pattern**: Inline list rendering via `.map()` — the most common React pattern for rendering dynamic lists from array data.
+- **Role**: This is the "make it work first" step. Everything is in one component to confirm correctness before extraction.
+
+```jsx
+/* src/components/Question.jsx */
+const Question = ({ question }) => {                                // 👈🏽 ✅ (1)
+  console.log(question);
+  return (
+    <div>
+      <h4>{question.question}</h4>                                  {/* 👈🏽 ✅ (2) */}
+      <div className="options">
+        {question.options.map( option => (                          {/* 👈🏽 ✅ (3) */}
+          <button className="btn btn-option" key={option}>
+            {option}                                                {/* 👈🏽 ✅ (4) */}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+export default Question
+```
+
+#### 194.2.3 Scaffold the `Options` component (prop placeholder):
+
+**Subsection Summary**
+- **Purpose**: Creates a new `Options` component file with the options-rendering JSX extracted from `Question`, but the prop destructuring is left intentionally incomplete (`{ /* 🤔 🤔 🤔 */ }`) to prompt the learner to think about what data the component needs.
+- **Key Pattern**: Component extraction — moving a logical chunk of JSX into its own file. The placeholder prop signature is a pedagogical device to emphasize that extracted components need explicit data passed via props.
+- **Issue**: As written, `question` is referenced inside the component body but is not destructured from props, so this version would throw a `ReferenceError` at runtime. This is intentional — the next steps fix it.
+
+```jsx
+/* src/components/Options.jsx */
+const Options = ({ /* 🤔 🤔 🤔 */ }) => {
+  return (
+    <div className="options">
+      {question.options.map((option) => (
+        <button className="btn btn-option" key={option}>
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+};
+export default Options;
+```
+
+#### 194.2.4 Refactor `Question` to delegate options rendering to `Options`:
+
+**Subsection Summary**
+- **Purpose**: Updates `Question` to import the new `Options` component and replace the inline options markup with a component call, passing the `question` prop through.
+- **Key Changes**: (1) `import Options from "./Options"` added at the top. The inline `<div className="options">` block is commented out to preserve it as a reference. Two rendering attempts are shown: `{<Options />}` (without prop — would fail) and `<Options question={question} />` (with prop — correct).
+- **Pattern**: Progressive refactoring — the commented-out code serves as documentation of what was replaced, and the two JSX lines illustrate the difference between forgetting and remembering to pass props.
+- **Role**: This is the critical integration step that wires `Question` to `Options`.
+
+```jsx
+/* src/components/Question.jsx */
+import Options from "./Options"                                   // 👈🏽 ✅ (1)
+const Question = ({ question }) => {
+  console.log(question);
+  return (
+    <div>
+      <h4>{question.question}</h4>
+      {/* 
+        <div className="options">
+          {question.options.map( option => (
+            <button className="btn btn-option" key={option}>
+              {option}
+            </button>
+          ))}
+        </div> 
+      */}
+
+      {<Options />}                                               {/* 👈🏽 ✅ (1) */}
+      <Options question={question} />                             {/* 👈🏽 ✅ (2) */}
+    </div>
+  )
+}
+export default Question
+```
+
+#### 194.2.5 Accept `question` prop in `Options` component:
+
+**Subsection Summary**
+- **Purpose**: Completes the `Options` component by properly destructuring the `question` prop, making the component fully functional.
+- **Key Change**: (1) `{ question }` is now destructured from props, replacing the earlier `{ /* 🤔 🤔 🤔 */ }` placeholder. The component can now access `question.options` without a `ReferenceError`.
+- **Result**: The full data flow is now complete: `App` selects `questions[index]` → passes it to `Question` → `Question` renders the question text and passes the object to `Options` → `Options` maps over `question.options` and renders a button for each answer.
+- **Pattern**: Standard prop-based data flow with component decomposition. Each component has a single responsibility: `Question` owns the question layout, `Options` owns the answer list.
+
+```js
+/* src/components/Options.jsx */
+const Options = ({ question }) => {                               // 👈🏽 ✅ (1)
+  return (
+    <div className="options">
+      {question.options.map((option) => (
+        <button className="btn btn-option" key={option}>
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export default Options;
+```
+
+### 🐞 194.3 Issues:
+
+- **`console.log` left in `Question`**: A debugging `console.log(question)` statement is present in the production component.
+- **Option string used as `key`**: Using the option text directly as the React `key` can cause collisions if two options have identical text.
+- **No bounds check on `index`**: If `index` exceeds `questions.length - 1`, `questions[index]` returns `undefined` and the app crashes.
+- **`Options` receives entire `question` object but only uses `options`**: The prop interface is wider than necessary, coupling `Options` to the full question shape.
+- **`{<Options />}` without prop still in JSX (194.2.4)**: The intermediate step leaves a prop-less `<Options />` call in the code alongside the correct one — only one should remain in the final version.
+- **No `onClick` handler on option buttons**: The buttons render but have no interactivity — clicking an answer does nothing yet.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| `console.log(question)` left in component | ⚠️ Identified | `src/components/Question.jsx:4` — Debugging statement should be removed before production. Logs the entire question object to the console on every render. |
+| Option string used as React `key` | ℹ️ Informational | `src/components/Options.jsx:5` — `key={option}` relies on option text uniqueness. Duplicate option strings within the same question would cause key collisions and unpredictable rendering. |
+| No bounds check on `index` | ⚠️ Identified | `src/App.jsx:61` — `questions[index]` has no guard against `index >= questions.length`. If `index` goes out of bounds, the app crashes with `Cannot read properties of undefined (reading 'question')`. |
+| `Options` receives full `question` object unnecessarily | ℹ️ Low Priority | `src/components/Options.jsx:1` — The component only uses `question.options`. Passing `options` directly would narrow the prop surface and improve clarity. |
+| Prop-less `{<Options />}` left in JSX | ⚠️ Identified | `src/components/Question.jsx:18` (194.2.4 step) — `{<Options />}` without the `question` prop would cause a runtime error if not removed. Should be cleaned up in the final version. |
+| Option buttons have no `onClick` handler | ℹ️ Informational | `src/components/Options.jsx:4-7` — Buttons are rendered but not wired to any dispatch or callback. Expected to be addressed in a future lesson when answer selection is implemented. |
+
+### 🧱 194.4 Pending Fixes (TODO)
+
+- [ ] Remove `console.log(question)` from `src/components/Question.jsx:4`.
+- [ ] Remove the prop-less `{<Options />}` line from `src/components/Question.jsx:18` — only the `<Options question={question} />` call should remain.
+- [ ] Add a bounds check before accessing `questions[index]` in `src/App.jsx:61`, e.g. `{status === "active" && index < questions.length && <Question question={questions[index]} />}`.
+- [ ] Consider narrowing `Options` prop from `question` to `options` for a cleaner API: `<Options options={question.options} />` in `src/components/Question.jsx` and `const Options = ({ options }) => ...` in `src/components/Options.jsx`.
+- [ ] Add `aria-label` attributes to each option button for accessibility, e.g. `aria-label={`Select answer: ${option}`}` in `src/components/Options.jsx:5`.
+- [ ] Add `onClick` handler to option buttons when answer selection logic is implemented in a future lesson (`src/components/Options.jsx:4-7`).
+- [ ] Use numeric indices or unique IDs as `key` instead of option text strings to avoid potential key collisions (`src/components/Options.jsx:5`).
+
+[↑ top - 194. Lesson 194 — *Displaying Questions*](#194-lesson-194-displaying-questions)
 
 
 
