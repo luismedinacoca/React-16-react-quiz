@@ -2842,6 +2842,439 @@ export default Options;
 [↑ top - 194. Lesson 194 — *Displaying Questions*](#194-lesson-194-displaying-questions)
 
 
+<br>
+
+## 🔧 195. Lesson 195 — *Handling New Answers*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [195. Lesson 195 — *Handling New Answers*](#-195-lesson-195--handling-new-answers)
+- [195.1 Context](#1951-context)
+- [195.2 Updating code according the context](#1952-updating-codetheory-according-the-context)
+  - [195.2.1 Add `answer` state to `initialState` and wire `newAnswer` action in the reducer](#19521-add-answer-state-to-initialstate-and-wire-newanswer-action-in-the-reducer)
+  - [195.2.2 Pass `answer` and `dispatch` through `Question` to `Options`](#19522-pass-answer-and-dispatch-through-question-to-options)
+  - [195.2.3 Wire `onClick` handler in `Options` to dispatch `newAnswer`](#19523-wire-onclick-handler-in-options-to-dispatch-newanswer)
+  - [195.2.4 Apply conditional CSS classes for `answer`, `correct`, and `wrong` (initial attempt)](#19524-apply-conditional-css-classes-for-answer-correct-and-wrong-initial-attempt)
+  - [195.2.5 Fix premature styling with `hasAnswered` guard and `disabled` attribute](#19525-fix-premature-styling-with-hasanswered-guard-and-disabled-attribute)
+  - [195.2.6 Add `points` state and award points in the `newAnswer` reducer case](#19526-add-points-state-and-award-points-in-the-newanswer-reducer-case)
+  - [195.2.7 Visual verification — points awarded on correct vs wrong answer](#19527-visual-verification--points-awarded-on-correct-vs-wrong-answer)
+- [195.3 Issues](#1953-issues)
+- [195.4 Pending Fixes (TODO)](#1954-pending-fixes-todo)
+
+### 🧠 195.1 Context:
+
+This lesson builds on Lesson 194, where the quiz displayed questions with clickable option buttons but had no interactivity — clicking an answer did nothing. This lesson closes that gap by (1) adding an `answer` property to the reducer state, (2) creating a `'newAnswer'` action that stores the user's selected option index, (3) passing `answer` and `dispatch` down the component tree so `Options` can dispatch the action and visually highlight correct/wrong answers, and (4) adding a `points` property to the state so the reducer can award points when the correct answer is selected.
+
+**Key Concepts:**
+
+1. **Reducer action for answer selection (`'newAnswer'`)**: A new case in the reducer stores the clicked option's index in `state.answer`. This is the standard `useReducer` pattern — user interaction dispatches an action, the reducer returns new state, and React re-renders.
+2. **Derived boolean from state (`hasAnswered`)**: Instead of tracking a separate "has the user answered" flag in the reducer, the component derives `hasAnswered = answer !== null`. Derived state avoids redundant data in the reducer and keeps the source of truth minimal.
+3. **Conditional CSS classes**: The `className` string is built dynamically based on `answer`, `index`, and `question.correctOption`. After answering, each button receives `'correct'` or `'wrong'`, and the selected button additionally receives `'answer'` — all driven by the single `answer` value in state.
+4. **Disabling buttons after answering**: `disabled={hasAnswered}` prevents the user from changing their answer once submitted. This is a UX best practice for quiz-style interfaces and leverages the native HTML `disabled` attribute.
+5. **Computing derived values inside the reducer**: The `'newAnswer'` case retrieves the current question via `state.questions.at(state.index)` and conditionally adds `question.points` to `state.points`. Performing this calculation inside the reducer keeps the logic centralized and the components purely presentational.
+
+**Advantages:**
+- Storing only the `answer` index (not a boolean or the full option) makes the state minimal while still enabling all derived UI decisions (highlighting, disabling, scoring).
+- The `hasAnswered` derived boolean avoids state duplication — a single `null` check replaces what could have been a separate `isAnswered` flag.
+- Calculating points inside the reducer ensures the scoring logic is co-located with all other state transitions, making it easy to test and reason about.
+- Using `disabled` on buttons provides native accessibility — screen readers announce the button as disabled, and keyboard users cannot activate it.
+
+**Disadvantages / Gotchas:**
+- The conditional `className` template literal is deeply nested and hard to read. A utility like `classnames`/`clsx` would improve clarity.
+- `answer` is stored as an index (`0`, `1`, `2`, `3`) with `null` meaning "not yet answered". This works but relies on the convention that `null` specifically means "unanswered" — `0` (the first option) is a valid answer, so falsy checks like `!answer` would be a bug.
+- The `'newAnswer'` reducer case declares `const question` inside a `switch` block. While this works, some linters flag `case`-level `const`/`let` declarations without braces as potentially confusing.
+- `state.questions.at(state.index)` uses `Array.prototype.at()`, which is an ES2022 feature. In older environments this would require a polyfill.
+
+**When to Consider Alternatives:**
+- If the quiz needs to support changing an answer before submitting, the `disabled` approach must be replaced with a "confirm answer" step.
+- For more complex scoring (partial credit, time-based bonuses), consider moving the scoring logic to a dedicated utility function rather than inlining it in the reducer.
+- If the className logic grows further (e.g., animations, themes), extract it into a helper function or use a CSS-in-JS solution.
+
+### ⚙️ 195.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Implement answer selection interactivity — when a user clicks an option, the app records the answer, highlights correct/wrong options with CSS classes, disables further clicks, and awards points for correct answers.
+- **Problem**: After Lesson 194, option buttons rendered correctly but had no `onClick` handler, no visual feedback on answer selection, and no scoring mechanism.
+- **Connection**: The subsections build the feature incrementally:
+    1. Add `answer: null` to `initialState` and a `'newAnswer'` reducer case (195.2.1).
+    2. Thread `answer` and `dispatch` through `Question` to `Options` (195.2.2–195.2.3).
+    3. Apply conditional CSS classes for visual feedback — first a naive version (195.2.4), then a corrected version with `hasAnswered` guard (195.2.5).
+    4. Add `points: 0` to state and award question-specific points on correct answers (195.2.6).
+    5. Visual verification of the scoring logic via React DevTools (195.2.7).
+
+#### 195.2.1 Add `answer` state to `initialState` and wire `newAnswer` action in the reducer:
+
+**Subsection Summary**
+- **Purpose**: Introduces `answer: null` in the reducer's `initialState` to track the user's selected option index, and adds a `'newAnswer'` case to the reducer that stores the dispatched payload as the new `answer` value.
+- **Key Changes**: (1) `answer: null` added to `initialState`. (2) `'newAnswer'` case added to the `switch` block returning `{ ...state, answer: action.payload }`. (3) `answer` destructured from `useReducer` alongside existing state properties. (4) `answer` and `dispatch` passed as props to `<Question />`.
+- **Pattern**: Standard `useReducer` state extension — add a new property, add a case, destructure it, pass it down.
+- **Role**: This is the foundational wiring that enables all subsequent subsections — without `answer` in state and the `'newAnswer'` action, no interactivity is possible.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,                                                         // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer':                                                     // 👈🏽 ✅ (2)
+      return {
+        ...state,
+        answer: action.payload,
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [
+    { questions, status, index, answer },                                 // 👈🏽 ✅ (3)
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <Question 
+            question={questions[index]}
+            answer={answer}                                                 {/* 👈🏽 ✅ (4) */}
+            dispatch={dispatch}                                             {/* 👈🏽 ✅ (4) */}
+          />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 195.2.2 Pass `answer` and `dispatch` through `Question` to `Options`:
+
+**Subsection Summary**
+- **Purpose**: Updates the `Question` component to accept `answer` and `dispatch` as props and forward them to the `Options` child component.
+- **Key Changes**: (1) `Question` destructures `{ question, answer, dispatch }` from props. (2) `<Options>` receives `answer` and `dispatch` in addition to `question`.
+- **Pattern**: Prop drilling — `App → Question → Options`. Each level receives and forwards the data it does not consume directly. `Question` acts as a pass-through for `answer` and `dispatch`.
+- **Role**: This wiring step connects the state (`answer`) and the state-setter (`dispatch`) from `App` all the way down to `Options`, where user interaction occurs.
+
+```jsx
+/* src/components/Question.jsx */
+import Options from "./Options"
+const Question = ({ question, answer, dispatch }) => {                        // 👈🏽 ✅ (1)
+  console.log(question);
+  return (
+    <div>
+      <h4>{question.question}</h4>
+      <Options
+        question={question}
+        answer={answer}                                                       {/* 👈🏽 ✅ (2) */}
+        dispatch={dispatch}                                                   {/* 👈🏽 ✅ (2) */}
+      />
+    </div>
+  )
+}
+export default Question;
+```
+
+#### 195.2.3 Wire `onClick` handler in `Options` to dispatch `newAnswer`:
+
+**Subsection Summary**
+- **Purpose**: Adds the `onClick` handler to each option button so that clicking an answer dispatches the `'newAnswer'` action with the button's index as the payload.
+- **Key Changes**: (1) `Options` destructures `{ question, answer, dispatch }`. (2) Each `<button>` receives `onClick={() => dispatch({ type: 'newAnswer', payload: index })}`, where `index` comes from the `.map()` callback.
+- **Pattern**: Event delegation via dispatch — user clicks trigger a state transition in the reducer. The component itself does not manage any local state; it simply dispatches.
+- **Role**: This is the interactivity step — after this change, clicking a button updates `answer` in the reducer, which triggers a re-render.
+
+```jsx
+/* src/components/Options.jsx */
+const Options = ({ question, answer, dispatch }) => {                           // 👈🏽 ✅ (1)
+  return (
+    <div className="options">
+      {question.options.map((option, index) => (
+        <button
+          className="btn btn-option"
+          key={option}
+          onClick={() => dispatch({ type: 'newAnswer', payload: index })}       {/* 👈🏽 ✅ (2) */}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+};
+export default Options;
+```
+
+#### 195.2.4 Apply conditional CSS classes for `answer`, `correct`, and `wrong` (initial attempt):
+
+**Subsection Summary**
+- **Purpose**: Adds dynamic CSS classes to each option button to visually distinguish the selected answer, the correct option, and wrong options using template literals.
+- **Key Changes**: (1) `${index === answer ? 'answer' : ''}` adds the `'answer'` class to the button the user clicked. (2) `${index === question.correctOption ? 'correct' : "wrong"}` adds `'correct'` to the right answer and `'wrong'` to all others.
+- **Issue**: This naive implementation applies `'correct'` and `'wrong'` classes **immediately**, even before the user has answered. Since `answer` starts as `null`, `index === null` is always `false`, so no button gets the `'answer'` class initially — but the `correct`/`wrong` classes are always applied regardless of whether the user has answered. This bug is visible in the screenshot and is fixed in the next subsection.
+- **Screenshot**: The image shows the quiz after answering — "React" (index 1) is highlighted as the selected `'answer'` and `'correct'`, while the other options show `'wrong'` styling. React DevTools confirm `answer: 2` and `correctOption: 1`.
+
+```jsx
+/* src/components/Options.jsx */
+const Options = ({ question, answer, dispatch }) => {
+  return (
+    <div className="options">
+      {question.options.map((option, index) => (
+        <button
+          className={
+            `btn btn-option 
+            ${index === answer ? 'answer' : ''}                                   // 👈🏽 ✅ (1)
+            ${index === question.correctOption ? 'correct' : "wrong" }`           // 👈🏽 ✅ (2)
+          }
+          key={option}
+          onClick={() => dispatch({ type: 'newAnswer', payload: index })}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+};
+export default Options;
+```
+
+![adding index, answer and style in option component](../img/section16-lecture195-001.png)
+
+
+#### 195.2.5 Fix premature styling with `hasAnswered` guard and `disabled` attribute:
+
+**Subsection Summary**
+- **Purpose**: Fixes the bug from 195.2.4 where `correct`/`wrong` CSS classes were applied before the user answered. Introduces a `hasAnswered` derived boolean and uses it to conditionally apply styling and disable buttons after answering.
+- **Key Changes**: (1) `const hasAnswered = answer !== null` — derives whether the user has already answered from the existing `answer` state. (2) The `correct`/`wrong` class is now wrapped inside a `hasAnswered ? ... : ''` ternary, so these classes only apply after answering. (3) `disabled={hasAnswered}` prevents further clicks once answered.
+- **Screenshot (002)**: Shows the bug — before answering, "React" option appears highlighted differently because the `correct`/`wrong` classes leak through. This is the visual motivation for adding the `hasAnswered` guard.
+- **Pattern**: Derived state for conditional rendering — instead of adding an `isAnswered` flag to the reducer, the component computes it from the existing `answer` value. This keeps the reducer minimal.
+
+![issue with the style - show up previous the answer is done](../img/section16-lecture195-002.png)
+```jsx
+/* src/components/Options.jsx */
+const Options = ({ question, answer, dispatch }) => {
+  const hasAnswered = answer !== null;                                            // 👈🏽 ✅ (1)
+  return (
+    <div className="options">
+      {question.options.map((option, index) => (
+        <button
+          className={`btn btn-option 
+            ${index === answer ? 'answer' : ''} 
+            ${hasAnswered ?                                                      // 👈🏽 ✅ (2)
+              index === question.correctOption ? 
+                'correct' 
+              : 
+                "wrong" 
+            : 
+              ''
+            }`
+          }
+          key={option}
+          onClick={() => dispatch({ type: 'newAnswer', payload: index })}
+          disabled={hasAnswered}                                                 // 👈🏽 ✅ (3)
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+};
+export default Options;
+```
+
+#### 195.2.6 Add `points` state and award points in the `newAnswer` reducer case:
+
+**Subsection Summary**
+- **Purpose**: Extends the reducer to track the user's score. Adds `points: 0` to `initialState` and modifies the `'newAnswer'` case to conditionally award the current question's point value when the correct option is selected.
+- **Key Changes**: (1) `points: 0` added to `initialState`. (2) Inside the `'newAnswer'` case, `const question = state.questions.at(state.index)` retrieves the current question object. (3) The points calculation uses `action.payload === question.correctOption ? state.points + question.points : state.points` — if the user selected the correct option, the question's individual point value is added; otherwise, points remain unchanged.
+- **Screenshot (003)**: Shows the console with the expanded `questions` array. Each question object has a `points` property (10, 20, 30) — the screenshot highlights these values to show that questions have variable point weights.
+- **Pattern**: Derived computation inside the reducer — the reducer accesses its own state (`state.questions`, `state.index`) to look up the correct answer and point value, then computes the new `points` total. This keeps all scoring logic centralized.
+
+![customize point question](../img/section16-lecture195-003.png)
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,                                                                  // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer':
+      const question = state.questions.at(state.index);                         // 👈🏽 ✅ (2)
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption                       // 👈🏽 ✅ (3)
+          //? state.points + 1 
+          ? state.points + question.points                                      // 👈🏽 ✅ (3)
+          : state.points,                                                       // 👈🏽 ✅ (3)
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [
+    { questions, status, index, answer }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  console.log(questions)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <Question 
+            question={questions[index]}
+            answer={answer}
+            dispatch={dispatch}
+          />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 195.2.7 Visual verification — points awarded on correct vs wrong answer:
+
+**Subsection Summary**
+- **Purpose**: Provides visual confirmation via React DevTools that the scoring logic works correctly.
+- **Screenshot (004)**: A side-by-side comparison of two scenarios. **Left panel**: The user selected "React" (index 1), which matches `correctOption: 1` — React DevTools show `answer: 1`, `points: 10` (the question's point value was awarded). **Right panel**: The user selected "Angular" (index 0), which does not match `correctOption: 1` — React DevTools show `answer: 0`, `points: 0` (no points awarded). This confirms the conditional scoring logic in the `'newAnswer'` reducer case is working as expected.
+
+![point when answer is correct and wrong](../img/section16-lecture195-004.png)
+
+### 🐞 195.3 Issues:
+
+- **`console.log(question)` still present in `Question`**: The debugging statement from Lesson 194 was never removed and continues to log the full question object on every render.
+- **`console.log(questions)` added in `App`**: A new debugging `console.log(questions)` was added in `App` and logs the entire questions array on every render.
+- **`const` declaration inside `switch` case without block scope**: `const question = state.questions.at(state.index)` is declared directly inside the `case 'newAnswer':` block without wrapping braces, which some linters flag as a potential scope issue.
+- **`points` not destructured from `useReducer`**: `points` was added to `initialState` but is not destructured in `App`'s `useReducer` call (`{ questions, status, index, answer }`), so it is not accessible in the component for display purposes.
+- **Conditional `className` template literal is deeply nested and hard to read**: The multi-line ternary inside the template literal in `Options` makes the JSX difficult to parse at a glance.
+- **No `aria-label` on option buttons**: The buttons lack accessibility attributes, making it hard for screen readers to convey the answer's correctness state.
+- **Option string still used as `key`**: Carried over from Lesson 194 — duplicate option text within a question would cause React key collisions.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| `console.log(question)` left in `Question` | ⚠️ Identified | `src/components/Question.jsx:4` — Debugging statement logs the entire question object on every render. Should be removed before production. |
+| `console.log(questions)` left in `App` | ⚠️ Identified | `src/App.jsx:56` — Debugging statement logs the full questions array on every render. Should be removed before production. |
+| `const` inside `switch` case without block scope | ℹ️ Low Priority | `src/App.jsx:37` — `const question = state.questions.at(state.index)` declared inside `case 'newAnswer':` without wrapping `{}`. Some linters (e.g., `no-case-declarations`) flag this. |
+| `points` not destructured from `useReducer` | ⚠️ Identified | `src/App.jsx:53` — `points` exists in state but is not destructured: `{ questions, status, index, answer }`. It will be needed once a score display component is added. |
+| Nested ternary in `className` is hard to read | ℹ️ Low Priority | `src/components/Options.jsx:7-16` — Multi-level ternary inside a template literal. Consider using a `classnames`/`clsx` utility or extracting to a helper function. |
+| No `aria-label` on option buttons | ℹ️ Informational | `src/components/Options.jsx:6-21` — Buttons lack accessibility attributes for screen readers to convey correctness state. |
+| Option string used as React `key` | ℹ️ Informational | `src/components/Options.jsx:18` — `key={option}` relies on option text uniqueness. Duplicate options within a question would cause key collisions. |
+
+### 🧱 195.4 Pending Fixes (TODO)
+
+- [ ] Remove `console.log(question)` from `src/components/Question.jsx:4`.
+- [ ] Remove `console.log(questions)` from `src/App.jsx:56`.
+- [ ] Destructure `points` from `useReducer` in `src/App.jsx:53`: `{ questions, status, index, answer, points }` — will be needed for a score display component.
+- [ ] Wrap the `case 'newAnswer':` body in braces to satisfy `no-case-declarations` linter rule in `src/App.jsx:36-45`:
+```jsx
+case 'newAnswer': {
+  const question = state.questions.at(state.index);
+  return { ...state, answer: action.payload, points: action.payload === question.correctOption ? state.points + question.points : state.points };
+}
+```
+- [ ] Simplify the `className` logic in `src/components/Options.jsx:7-16` using a helper function or `clsx`:
+```jsx
+import clsx from 'clsx';
+// ...
+className={clsx('btn', 'btn-option', {
+  answer: index === answer,
+  correct: hasAnswered && index === question.correctOption,
+  wrong: hasAnswered && index !== question.correctOption,
+})}
+```
+- [ ] Add `aria-label` to option buttons in `src/components/Options.jsx:6`, e.g. `aria-label={`Select answer: ${option}`}`.
+- [ ] Use numeric indices or unique IDs as `key` instead of option text strings to avoid potential key collisions in `src/components/Options.jsx:18`.
+- [ ] Add bounds check before accessing `questions[index]` in `src/App.jsx:78` to prevent crashes if `index` exceeds array length.
+
+[↑ top - 195. Lesson 195 — *Handling New Answers*](#-195-lesson-195--handling-new-answers)
+
+
 
 
 
