@@ -3275,6 +3275,380 @@ className={clsx('btn', 'btn-option', {
 [↑ top - 195. Lesson 195 — *Handling New Answers*](#-195-lesson-195--handling-new-answers)
 
 
+<br>
+
+## 🔧 196. Lesson 196 — *Moving to the Next Question*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [196. Lesson 196 — *Moving to the Next Question*](#-196-lesson-196--moving-to-the-next-question)
+- [196.1 Context](#-1961-context)
+- [196.2 Updating code according the context](#️-1962-updating-codetheory-according-the-context)
+  - [196.2.1 Creating the `NextButton` component scaffold](#19621-creating-the-nextbutton-component-scaffold)
+  - [196.2.2 Importing `NextButton`, adding `'nextQuestion'` case, and rendering the button in `App`](#19622-importing-nextbutton-adding-nextquestion-case-and-rendering-the-button-in-app)
+  - [196.2.3 Implementing the `NextButton` conditional rendering and dispatch logic](#19623-implementing-the-nextbutton-conditional-rendering-and-dispatch-logic)
+  - [196.2.4 Fixing the bug — resetting `answer` to `null` on `'nextQuestion'`](#19624-fixing-the-bug--resetting-answer-to-null-on-nextquestion)
+- [196.3 Issues](#-1963-issues)
+- [196.4 Pending Fixes (TODO)](#-1964-pending-fixes-todo)
+
+### 🧠 196.1 Context:
+
+This lesson focuses on implementing the ability to **move to the next question** in the React Quiz application after a user has selected an answer. The core mechanism relies on the `useReducer` pattern already established in previous lessons: a new action type (`'nextQuestion'`) increments the `index` state property, and a new `NextButton` component dispatches that action.
+
+**Key Concepts**
+
+1. **Conditional rendering based on state** — The `NextButton` only appears after the user has answered a question (`answer !== null`). This is accomplished via an early return (`if (answer === null) return null`), which is a clean and idiomatic React pattern.
+2. **Index-based question navigation** — The quiz uses an `index` property in state to determine which question from the `questions` array is currently displayed. Dispatching `'nextQuestion'` simply increments `index` by 1.
+3. **State reset between questions** — When moving to the next question, the `answer` state must be reset to `null` so the new question renders without a pre-selected option and the `NextButton` hides again until the user answers.
+4. **Reducer-driven UI flow** — All navigation logic lives in the reducer function rather than in component event handlers. Components remain thin, only responsible for dispatching actions and rendering based on current state.
+5. **No payload required** — Unlike `'newAnswer'` which carries a payload (the selected option index), the `'nextQuestion'` action needs no payload; the reducer simply increments `index` and resets `answer`.
+
+**Advantages**
+- Keeps navigation logic centralized in the reducer, making it predictable and easy to test.
+- Early return pattern in `NextButton` avoids unnecessary wrapper elements and keeps the component tree clean.
+- Resetting `answer` inside the reducer guarantees the UI is always in a consistent state when a new question appears.
+- Separating `NextButton` into its own component follows the single-responsibility principle.
+
+**Disadvantages / Gotchas**
+- No bounds checking is performed on `index` — clicking "Next" on the last question will attempt to access `questions[questions.length]`, which is `undefined`, and will cause a runtime crash.
+- The `console.log(questions)` debugging statement is still present in `App`, and `console.log(question)` is still in `Question`.
+- The `points` value is not destructured from state in `App`, so it cannot yet be displayed to the user.
+
+**When to Consider Alternatives**
+- For larger quiz applications, consider using a state machine library (e.g., XState) to model valid transitions (e.g., prevent navigating past the last question).
+- If questions could be loaded dynamically or in pages, an index-based approach may need to be replaced with cursor/ID-based navigation.
+- For complex multi-step forms or wizards, a dedicated step/wizard library may provide built-in bounds checking and transition guards.
+
+### ⚙️ 196.2 Updating code/theory according the context:
+
+#### **Summary**
+- This section walks through the full implementation of the "Next Question" feature, from creating the component scaffold to wiring it into the reducer and fixing the `answer` reset bug.
+- The problem being solved is: after the user answers a question, they need a way to advance to the next one.
+- **196.2.1** creates the initial empty `NextButton` component. **196.2.2** integrates it into `App` — importing it, adding the `'nextQuestion'` reducer case, and rendering it with the necessary props. **196.2.3** implements the actual `NextButton` logic with conditional rendering and the dispatch call. **196.2.4** fixes the bug where the `answer` was not reset to `null` when advancing, causing the previous answer's styling to persist on the new question.
+
+#### 196.2.1 Creating the `NextButton` component scaffold
+
+**Subsection Summary**
+- **What it does**: Creates the initial boilerplate for a new `NextButton` component in `src/components/NextButton.jsx`.
+- **Responsibility**: Establishes the file and component structure before any logic is added.
+- **Key pattern**: Follows the project convention of one component per file, default export, and `const` arrow function syntax.
+
+- As soon as the user clicks on one of the first question's options, a "Next" button needs to appear so the user can move to the next question.
+- This means increasing the `index` state value.
+
+```jsx
+/* src/components/NextButton.jsx */
+const NextButton = () => {
+  return (
+    <div>
+      
+    </div>
+  )
+}
+export default NextButton;
+```
+
+#### 196.2.2 Importing `NextButton`, adding `'nextQuestion'` case, and rendering the button in `App`
+
+**Subsection Summary**
+- **What it does**: Wires the new `NextButton` into the application by (1) importing it, (2) adding a `'nextQuestion'` case to the reducer that increments `index`, and (3) rendering `<NextButton>` inside the `status === "active"` block with `dispatch` and `answer` as props.
+- **Responsibility**: Connects the navigation action to the global state and places the button in the correct position in the component tree (below the `<Question>` component).
+- **Key patterns**: `useReducer` action dispatching, conditional rendering via short-circuit (`&&`), Fragment (`<>...</>`) wrapper to render sibling elements.
+- **Note**: At this stage `'nextQuestion'` only increments `index` but does **not** reset `answer` — this is addressed in 196.2.4.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";                             // 👈🏽 ✅ (1)
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion':                                                          // 👈🏽 ✅ (2)
+      return {
+        ...state,
+        index: state.index + 1,                                                   // 👈🏽 ✅ (2)
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [
+    { questions, status, index, answer }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  console.log(questions)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton dispatch={dispatch} answer={answer}/>                       {/* 👈🏽 ✅ (3) */}
+          </>
+        }
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 196.2.3 Implementing the `NextButton` conditional rendering and dispatch logic
+
+**Subsection Summary**
+- **What it does**: Implements the final `NextButton` component — receives `dispatch` and `answer` as props, conditionally renders only when an answer has been selected, and dispatches `'nextQuestion'` on click.
+- **Responsibility**: Provides the UI control for advancing through the quiz. The early return (`if (answer === null) return null`) ensures the button is invisible until the user selects an answer.
+- **Key patterns**: Early return for conditional rendering, `dispatch` callback with no payload, `btn btn-ui` CSS classes from the project's existing design system.
+- **Important note**: No `payload` is necessary for the `'nextQuestion'` action — the reducer only needs to know which action to perform, not any additional data.
+
+```jsx
+/* src/components/NextButton.jsx */
+const NextButton = ({ dispatch, answer }) => {
+  if(answer === null) return null; 
+  return (
+    <button
+      className="btn btn-ui"
+      onClick={() => dispatch({ type: 'nextQuestion' })}
+    >
+      Next
+    </button>
+  )
+}
+export default NextButton;
+```
+
+- No payload is necessary.
+
+Issue:
+
+* ⚠️ Answer has not been reset. When moving to the next question, the previous answer's visual state (correct/wrong highlighting) persists because `answer` remains set to the previously selected index instead of being reset to `null`.
+
+#### 196.2.4 Fixing the bug — resetting `answer` to `null` on `'nextQuestion'`
+
+**Subsection Summary**
+- **What it does**: Fixes the critical bug from 196.2.3 by adding `answer: null` to the `'nextQuestion'` reducer case's return object.
+- **Responsibility**: Ensures that when the user advances to the next question, the UI state is clean — no pre-selected option styling, and the `NextButton` hides again until a new answer is selected.
+- **Key pattern**: Demonstrates the importance of resetting dependent state when transitioning between "steps" in a reducer-driven flow. Forgetting to reset `answer` caused the previous answer's correct/wrong CSS classes to appear on the new question's options.
+- **Additional issue noted**: The instructor mentions that displaying the current points before each question would be a nice addition, foreshadowing future lessons.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,                                                       // 👈🏽 ✅ (1)
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [
+    { questions, status, index, answer }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  console.log(questions)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton dispatch={dispatch} answer={answer}/>
+          </>
+        }
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+Issue:
+* Displaying the current points before each question — `points` is tracked in state but not yet destructured or rendered anywhere in the UI.
+
+### 🐞 196.3 Issues:
+
+- **No bounds checking on `index` increment**: The `'nextQuestion'` reducer case increments `index` unconditionally. When the user reaches the last question and clicks "Next", `index` will exceed `questions.length - 1`, causing `questions[index]` to be `undefined` and crashing the app.
+- **`answer` not reset (fixed in 196.2.4)**: The initial implementation of `'nextQuestion'` in 196.2.2 did not reset `answer` to `null`, causing the previous question's correct/wrong styling to persist on the new question's options. This was fixed in 196.2.4 by adding `answer: null` to the returned state.
+- **`console.log(questions)` still present in `App`**: Carried over from Lesson 195 — logs the full questions array on every render.
+- **`console.log(question)` still present in `Question`**: Carried over from Lesson 194 — logs the current question object on every render.
+- **`points` not destructured from `useReducer` in `App`**: `points` exists in state but is not included in the destructured values (`{ questions, status, index, answer }`), so it cannot be displayed to the user.
+- **No accessibility attributes on `NextButton`**: The "Next" button lacks `aria-label` and keyboard-specific handling beyond the default button behavior.
+- **No `'finished'` status transition**: There is no mechanism to transition to a `'finished'` status when the user has answered all questions. The app will crash instead of showing a results screen.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| No bounds checking on `index` increment | ⚠️ Identified | `src/App.jsx:47-52` — `case 'nextQuestion'` increments `index` without checking if it exceeds `questions.length - 1`. Accessing `questions[index]` with an out-of-bounds index returns `undefined`, crashing `Question` and `Options` components. |
+| `answer` not reset on `'nextQuestion'` | ✅ Fixed | `src/App.jsx:51` — Initially missing `answer: null` in the `'nextQuestion'` return. Fixed in 196.2.4 by adding `answer: null` to the returned state object. |
+| `console.log(questions)` in `App` | ⚠️ Identified | `src/App.jsx:63` — Debugging statement logs the entire questions array on every render. Should be removed before production. |
+| `console.log(question)` in `Question` | ⚠️ Identified | `src/components/Question.jsx:4` — Debugging statement logs the current question object on every render. Carried over from Lesson 194. |
+| `points` not destructured from state | ⚠️ Identified | `src/App.jsx:59-61` — `points` is in state but not in the destructured values: `{ questions, status, index, answer }`. It is needed to display the user's score. |
+| No `aria-label` on `NextButton` | ℹ️ Low Priority | `src/components/NextButton.jsx:5-10` — The "Next" button lacks an `aria-label` attribute for screen readers. |
+| No `'finished'` status transition | ⚠️ Identified | `src/App.jsx:47-52` — No guard or transition to prevent navigating past the last question. Expected to be addressed in a future lesson. |
+
+### 🧱 196.4 Pending Fixes (TODO)
+
+- [ ] Add bounds checking in the `'nextQuestion'` reducer case in `src/App.jsx:47-52` to prevent `index` from exceeding `questions.length - 1`. Either guard the increment or transition to `status: 'finished'`:
+```jsx
+case 'nextQuestion':
+  return {
+    ...state,
+    index: state.index + 1,
+    answer: null,
+    status: state.index + 1 >= state.questions.length ? 'finished' : state.status,
+  };
+```
+- [ ] Remove `console.log(questions)` from `src/App.jsx:63`.
+- [ ] Remove `console.log(question)` from `src/components/Question.jsx:4`.
+- [ ] Destructure `points` from `useReducer` in `src/App.jsx:59-61`: `{ questions, status, index, answer, points }` — needed to display score in the UI.
+- [ ] Add `aria-label="Next question"` to the `<button>` in `src/components/NextButton.jsx:5`:
+```jsx
+<button
+  className="btn btn-ui"
+  aria-label="Next question"
+  onClick={() => dispatch({ type: 'nextQuestion' })}
+>
+  Next
+</button>
+```
+- [ ] Implement a `'finished'` status screen/component to display final results when all questions have been answered (foreshadowed by the `'finished'` value in the `status` comment at `src/App.jsx:12`).
+- [ ] Add a guard in `App` JSX at `src/App.jsx:85` to verify `questions[index]` exists before rendering `<Question>` to prevent potential crashes from an out-of-bounds `index`.
+
+[↑ top - 196. Lesson 196 — *Moving to the Next Question*](#-196-lesson-196--moving-to-the-next-question)
+
+
+
 
 
 

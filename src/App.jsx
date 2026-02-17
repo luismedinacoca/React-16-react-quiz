@@ -5,6 +5,7 @@ import Loader from "./components/Loader";
 import Error from "./components/Error";
 import StartScreen from "./components/StartScreen";
 import Question from "./components/Question";
+import NextButton from "./components/NextButton";
 
 const initialState = {
   questions: [],
@@ -22,7 +23,6 @@ const reducer = (state, action) => {
         questions: action.payload,
         status: "ready",
       };
-
     case "dataFailed":
       return {
         ...state,
@@ -44,6 +44,12 @@ const reducer = (state, action) => {
           : state.points,
       }
     }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
     default:
       throw new Error("Action Unknown!");
   }
@@ -75,11 +81,15 @@ function App() {
           />
         }
         {status === "active" &&
-          <Question 
-            question={questions[index]}
-            answer={answer}
-            dispatch={dispatch}
-          />}
+          <>
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton dispatch={dispatch} answer={answer}/>
+          </>
+        }
       </Main>
     </div>
   );
