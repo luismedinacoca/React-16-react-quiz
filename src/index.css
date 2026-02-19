@@ -93,12 +93,16 @@ h4 {
   align-items: center;
 }
 
+.question {
+  width: 100%
+}
+
 .progress {
-  margin-bottom: 4rem;
-  display: grid;
-  justify-content: space-between;
-  gap: 1.2rem;
-  grid-template-columns: auto auto;
+  margin: 2rem 0 4rem;
+  width: 160%;
+  display: flex;
+  justify-items: center;
+  justify-content: space-around;
   font-size: 1.8rem;
   color: var(--color-medium);
 }

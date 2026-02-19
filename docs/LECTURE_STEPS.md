@@ -3647,6 +3647,433 @@ case 'nextQuestion':
 
 [↑ top - 196. Lesson 196 — *Moving to the Next Question*](#-196-lesson-196--moving-to-the-next-question)
 
+<br>
+
+## 🔧 197. Lesson 197 — *Displaying Progress*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [197. Lesson 197 — *Displaying Progress*](#-197-lesson-197--displaying-progress)
+- [197.1 Context](#1971-context)
+- [197.2 Updating code/theory according the context](#1972-updating-codetheory-according-the-context)
+  - [197.2.1 Basic Progress component with question index and total](#19721-basic-progress-component-with-question-index-and-total)
+  - [197.2.2 Integrating Progress into App when status is active](#19722-integrating-progress-into-app-when-status-is-active)
+  - [197.2.3 Adding points display to Progress component](#19723-adding-points-display-to-progress-component)
+  - [197.2.4 Computing maxPossiblePoints and passing points to Progress](#19724-computing-maxpossiblepoints-and-passing-points-to-progress)
+  - [197.2.5 Complete Progress component with question and points display](#19725-complete-progress-component-with-question-and-points-display)
+  - [197.2.6 Adding HTML progress bar element](#19726-adding-html-progress-bar-element)
+  - [197.2.7 Updating progress bar value when user selects an answer](#19727-updating-progress-bar-value-when-user-selects-an-answer)
+- [197.3 Issues](#1973-issues)
+- [197.4 Pending Fixes (TODO)](#1974-pending-fixes-todo)
+
+### 🧠 197.1 Context:
+
+This lesson focuses on **displaying quiz progress** during the active phase: showing which question the user is on, how many questions remain, and how many points they have earned. A visual progress bar provides immediate feedback and improves UX.
+
+**Key Concepts:**
+1. **Progress UI**: A header displaying `Question X / Y` and `points / maxPoints` keeps the user oriented.
+2. **HTML `<progress>` element**: Native HTML5 element with `max` and `value` attributes for a visual bar. Styled via CSS (`::-webkit-progress-bar`, `::-webkit-progress-value`).
+3. **Derived state**: `maxPossiblePoints` is computed from `questions.reduce()`—no extra reducer action needed.
+4. **Answer-aware progress**: The progress bar advances when the user selects an option *before* moving to the next question. Formula: `value={index + Number(answer !== null)}`—adds 1 when an answer exists to reflect the “answered” state of the current question.
+
+**Advantages:**
+- Clear, native semantics with the `<progress>` element.
+- Minimal state: `points` and `index` come from existing reducer state; `maxPossiblePoints` is derived.
+- Users see progress both as numbers and as a bar, reducing cognitive load.
+- Immediate visual feedback when selecting an answer (bar moves before “Next”).
+
+**Disadvantages / Gotchas:**
+- `<progress>` styling differs across browsers; use vendor prefixes (`-webkit-`) for consistent appearance.
+- `maxPossiblePoints` is recalculated on every render; for large question sets this is negligible but could be memoized if needed.
+- The `value` formula assumes `answer !== null` is boolean; `Number(answer !== null)` converts to 0 or 1 for correct progress math.
+
+**When to Consider Alternatives:**
+- If you need step-based or multi-phase progress (e.g. sections), a custom progress component with explicit steps may be better.
+- For complex animations or non-linear progress, consider libraries like Framer Motion or a custom SVG-based progress indicator.
+
+In this quiz app, the `Progress` component is rendered when `status === 'active'` and receives `index`, `numQuestions`, `points`, `maxPossiblePoints`, and `answer` from the parent `App` component.
+
+### ⚙️ 197.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Add a `Progress` component that shows question position, total questions, earned points, and max possible points during the quiz, plus a visual progress bar.
+- **Problem solved**: Users had no visibility into how far they were through the quiz or their current score.
+- **How subsections connect**: Subsections 197.2.1–197.2.2 introduce the basic `Progress` component and wire it into `App`. Subsections 197.2.3–197.2.5 add points display and `maxPossiblePoints`. Subsections 197.2.6–197.2.7 add the HTML progress bar and make it answer-aware so it updates when the user selects an option.
+
+#### 197.2.1 Basic Progress component with question index and total
+**Subsection Summary**
+- **Purpose**: Create an initial `Progress` component that displays the current question number and total.
+- **Content**: A simple functional component receiving `index` and `numQuestions` as props, rendering `Question X / Y` in a header.
+- **Key pattern**: Zero-based `index` shown as `index + 1` for user-facing display.
+- **Image**: `../img/section16-lecture197-001.png` illustrates the question counter in the UI.
+```jsx
+/* src/components/Progress.jsx */
+const Progress = ({ index, numQuestions }) => {
+  return (
+    <header className="progress">
+      <p>Question <strong>{index + 1}</strong> / {numQuestions}</p>
+    </header>
+  )
+}
+export default Progress
+```
+
+![question with index and total questions](../img/section16-lecture197-001.png)
+
+#### 197.2.2 Integrating Progress into App when status is active
+**Subsection Summary**
+- **Purpose**: Render the `Progress` component in `App` only when the quiz is active.
+- **Content**: Import `Progress`, pass `index` and `numQuestions`, and render it inside the `status === "active"` block alongside `Question` and `NextButton`.
+- **Key pattern**: Progress is shown only during the quiz phase; `numQuestions` comes from `questions.length`.
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";                               // 👈🏽 ✅ (1)
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [
+    { questions, status, index, answer }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  console.log(questions)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress                                                       {/* 👈🏽 ✅ (2) */}
+              index={index}
+              numQuestions={numQuestions}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton dispatch={dispatch} answer={answer}/>
+          </>
+        }
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 197.2.3
+```jsx
+/* src/components/Progress.jsx */
+const Progress = ({ index, numQuestions, points }) => {                         // 👈🏽 ✅ (1)
+  return (
+    <header className="progress">
+      <p>Question <strong>{index + 1}</strong> / {numQuestions}</p>
+      <p>{points} / X</p>                                                       {/* 👈🏽 ✅ (2) */}
+    </header>
+  )
+}
+export default Progress;
+```
+
+![points and maximum points](../img/section16-lecture197-002.png)
+
+#### 197.2.3 Adding points display to Progress component
+**Subsection Summary**
+- **Purpose**: Extend `Progress` to show earned points and a placeholder for maximum points.
+- **Content**: Add a `points` prop and a second `<p>` displaying `{points} / X` (X is a placeholder until `maxPossiblePoints` is passed).
+- **Key pattern**: `points` is already available in reducer state and must be destructured from `useReducer` in `App.jsx` before passing down.
+- **Image**: `../img/section16-lecture197-002.png` shows the points display in the header.
+
+#### 197.2.4 Computing maxPossiblePoints and passing points to Progress
+**Subsection Summary**
+- **Purpose**: Compute total possible points from all questions and pass `points` and `maxPossiblePoints` to `Progress`.
+- **Content**: Use `questions.reduce((prev, curr) => prev + curr.points, 0)` to derive `maxPossiblePoints`; destructure `points` from reducer state and pass both to `Progress`.
+- **Key pattern**: Derived state—no new reducer logic; computed on each render from existing `questions` data.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [
+    { questions, status, index, answer, points }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0)           // 👈🏽 ✅ (1)
+  console.log(questions)
+  console.log(maxPossiblePoints)
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress 
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}                                             {/* 👈🏽 ✅ (2) */}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton dispatch={dispatch} answer={answer}/>
+          </>
+        }
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 197.2.5 Complete Progress component with question and points display
+**Subsection Summary**
+- **Purpose**: Finalize the text-based progress display with both question counter and points.
+- **Content**: Replace the placeholder `X` with `{maxPossiblePoints}` so the header shows `points / maxPossiblePoints`.
+- **Key pattern**: All required props (`index`, `numQuestions`, `points`, `maxPossiblePoints`) are now passed from `App` to `Progress`.
+- **Image**: `../img/section16-lecture197-003.png` shows the complete text progress (question number and score).
+
+```jsx
+/* src/components/Progress.jsx */
+const Progress = ({ index, numQuestions, points, maxPossiblePoints }) => {
+  return (
+    <header className="progress">
+      <p>Question <strong>{index + 1}</strong> / {numQuestions}</p>
+      <p>{points} / {maxPossiblePoints}</p>
+    </header>
+  )
+}
+export default Progress;
+```
+
+![maximum possible points](../img/section16-lecture197-003.png)
+
+#### 197.2.6 Adding HTML progress bar element
+**Subsection Summary**
+- **Purpose**: Add a visual progress bar using the native HTML `<progress>` element.
+- **Content**: Add `<progress max={numQuestions} value={index}/>` above the header; bar advances as `index` increases.
+- **Key pattern**: `max` is total questions; `value` is current index (bar does not yet reflect answer selection—see 197.2.7).
+- **Image**: `../img/section16-lecture197-004.png` shows the progress bar; the lesson notes that after clicking an option the bar should change (implemented next).
+
+```jsx
+/* src/components/Progress.jsx */
+const Progress = ({ index, numQuestions, points, maxPossiblePoints }) => {
+  return (
+    <>
+      <progress max={numQuestions} value={index}/>
+      <header className="progress">
+        <p>Question <strong>{index + 1}</strong> / {numQuestions}</p>
+        <p>{points} / {maxPossiblePoints}</p>
+      </header>
+    </>
+  )
+}
+export default Progress;
+```
+
+![progress bar manipulated](../img/section16-lecture197-004.png)
+
+New Functionality:
+* After clicking on any option, the progress bar must change its value.
+
+#### 197.2.7 Updating progress bar value when user selects an answer
+**Subsection Summary**
+- **Purpose**: Make the progress bar reflect that the current question has been answered before the user clicks "Next".
+- **Content**: Add `answer` prop; use `value={index + Number(answer !== null)}` so the bar advances by 1 when an option is selected.
+- **Key pattern**: `Number(answer !== null)` yields 0 or 1—adds the current question to the "answered" count once the user picks an option.
+- **Image**: `../img/section16-lecture197-005.png` illustrates the progress bar state after the user selects an option.
+
+```jsx
+/* src/components/Progress.jsx */
+const Progress = ({ index, numQuestions, points, maxPossiblePoints, answer }) => {      // 👈🏽 ✅ (1)
+  return (
+    <>
+      <progress max={numQuestions} value={index + Number(answer !== null)}/>            {/* 👈🏽 ✅ (2) */}
+      <header className="progress">
+        <p>Question <strong>{index + 1}</strong> / {numQuestions}</p>
+        <p>{points} / {maxPossiblePoints}</p>
+      </header>
+    </>
+  )
+}
+export default Progress;
+```
+
+![Progress bar after clicking an option](../img/section16-lecture197-005.png)
+
+
+### 🐞 197.3 Issues:
+
+- Debug `console.log` statements in `App.jsx` (shown in 197.2.4) should be removed before production.
+- The native `<progress>` element lacks accessibility attributes (`aria-valuemin`, `aria-valuemax`, `aria-valuenow`, `aria-label`) for screen readers.
+- Bounds checking for `questions[index]` in `App.jsx` (carried over from Lesson 196) — potential runtime error if `index` goes out of bounds.
+- The `.progress` CSS class sets `width: 160%`, which may cause horizontal overflow on smaller viewports.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| Debug console.log statements in App | ℹ️ Low Priority | `src/App.jsx:63-64` — `console.log(questions)` and `console.log(maxPossiblePoints)` |
+| Progress bar missing accessibility attributes | ⚠️ Identified | `src/components/Progress.jsx:4` — `<progress>` lacks `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, `aria-label` |
+| Out-of-bounds index for questions array | ⚠️ Identified | `src/App.jsx:95` — `questions[index]` may be undefined when `index >= questions.length` |
+| Progress header width causes overflow | ℹ️ Informational | `src/index.css:99-107` — `.progress { width: 160% }` |
+
+### 🧱 197.4 Pending Fixes (TODO)
+
+- [ ] Remove `console.log(questions)` and `console.log(maxPossiblePoints)` from `src/App.jsx` if still present.
+- [ ] Add accessibility attributes to the `<progress>` element in `src/components/Progress.jsx`:
+```jsx
+<progress
+  max={numQuestions}
+  value={index + Number(answer !== null)}
+  aria-valuemin={0}
+  aria-valuemax={numQuestions}
+  aria-valuenow={index + Number(answer !== null)}
+  aria-label="Quiz progress"
+/>
+```
+- [ ] Add a guard in `App.jsx` to verify `questions[index]` exists before rendering `<Question>` (e.g. `questions[index] && <Question ... />`).
+- [ ] Consider reducing `.progress` width in `src/index.css` or using `max-width` for better responsiveness on smaller screens.
+
+[↑ top - 197. Lesson 197 — *Displaying Progress*](#-197-lesson-197--displaying-progress)
+
+
 
 
 
