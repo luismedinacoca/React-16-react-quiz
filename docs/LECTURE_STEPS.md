@@ -4073,8 +4073,609 @@ export default Progress;
 
 [↑ top - 197. Lesson 197 — *Displaying Progress*](#-197-lesson-197--displaying-progress)
 
+<br>
 
+## 🔧 198. Lesson 198 — *Finishing a Quiz*
 
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [198. Lesson 198 — *Finishing a Quiz*](#-198-lesson-198--finishing-a-quiz)
+- [198.1 Context](#1981-context)
+- [198.2 Updating code/theory according the context](#1982-updating-codetheory-according-the-context)
+  - [198.2.1 FinishScreen component and status 'finished'](#19821-finishscreen-component-and-status-finished)
+  - [198.2.2 Out-of-bounds index at last question](#19822-out-of-bounds-index-at-last-question)
+  - [198.2.3 Fixing NextButton with numQuestions check](#19823-fixing-nextbutton-with-numquestions-check)
+  - [198.2.4 Finish button on last question](#19824-finish-button-on-last-question)
+  - [198.2.5 Adding 'finish' reducer case](#19825-adding-finish-reducer-case)
+  - [198.2.6 Highscore state and reducer update](#19826-highscore-state-and-reducer-update)
+  - [198.2.7 FinishScreen with emoji feedback and highscore display](#19827-finishscreen-with-emoji-feedback-and-highscore-display)
+- [198.3 Issues](#1983-issues)
+- [198.4 Pending Fixes (TODO)](#1984-pending-fixes-todo)
+
+### 🧠 198.1 Context:
+
+This lesson completes the quiz flow by handling the transition from the last question to a **Finish Screen**, displaying the final score, and optionally tracking a **highscore**.
+
+**Key Concepts**
+
+1. **Finish Screen**: A dedicated component (`FinishScreen`) renders when `status === 'finished'`. It receives `points` and `maxPossiblePoints` to compute and display the percentage score.
+
+2. **Conditional Next/Finish Button**: The `NextButton` must change behavior on the last question—showing "Next" for indices `0` to `numQuestions - 2`, and "Finish" when `index === numQuestions - 1`. Clicking "Finish" dispatches a `finish` action to move the quiz into the finished state.
+
+3. **Reducer `finish` Case**: The reducer handles `action.type === 'finish'` by setting `status: "finished"` and optionally updating `highscore` if the current `points` exceed the previous highscore.
+
+4. **Highscore Tracking**: Highscore is stored in Reducer state, updated when finishing the quiz. It provides simple in-session persistence (survives until the page is refreshed).
+
+5. **User Feedback**: The `FinishScreen` uses percentage-based emoji feedback (🥇, 🎉, 😃, 🤔, 🤦🏽) to make the result more engaging.
+
+**Advantages**
+
+- Clear separation between quiz state (`active`) and result state (`finished`).
+- Single source of truth for highscore in Reducer state.
+- Percentage and emoji feedback improve UX without extra libraries.
+
+**Disadvantages / Gotchas**
+
+- Highscore is lost on page refresh (no `localStorage` persistence in this lesson).
+- Emoji logic using multiple `if` statements can overwrite values when ranges overlap (e.g. `percentage === 0`).
+- Division by zero if `maxPossiblePoints === 0` (edge case when no questions are loaded).
+- `NextButton` returns `undefined` when neither condition matches (edge case when `index` is out of bounds).
+
+**When to Consider Alternatives**
+
+- Use `localStorage` or a backend to persist highscore across sessions.
+- Use `else if` or a lookup structure for emoji selection to avoid overwrites.
+- Add guards for empty `questions` array or zero `maxPossiblePoints`.
+
+### ⚙️ 198.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Implement the end-of-quiz flow—from the last question to a finish screen with score and highscore.
+- **Problem**: Without a "Finish" state, the app had no way to complete the quiz, and an out-of-bounds index at the last question caused errors.
+- **Connection**: The subsections progressively add:
+  1. `FinishScreen` and manual DevTools test for `status === 'finished'`.
+  2. Identification of the index-out-of-bounds bug.
+  3. Fix via `numQuestions` check in `NextButton`.
+  4. "Finish" button and `finish` reducer case.
+  5. Highscore in state and reducer.
+  6. Enhanced `FinishScreen` with emoji and highscore display.
+
+#### 198.2.1 FinishScreen component and status 'finished'
+**Subsection Summary**
+- **Purpose**: Introduce the `FinishScreen` component that displays the final score (points, maxPossiblePoints, percentage).
+- **Content**: A simple functional component receiving `points` and `maxPossiblePoints`, computing percentage and rendering a result message.
+- **Steps**: Use React DevTools to manually set `status` to `"finished"` in the Reducer to verify that `FinishScreen` renders.
+- **Image**: `../img/section16-lecture198-001.png` illustrates the Finish Screen visible when status is `finished`.
+
+```jsx
+/* src/components/FinishScreen.jsx */
+const FinishScreen = ({ points, maxPossiblePoints }) => {
+  const percentage = (points / maxPossiblePoints) * 100;
+  return (
+    <p className="result">
+      You scored <strong>{points}</strong> out of {maxPossiblePoints} ({Math.ceil(percentage)}%)
+    </p>
+  )
+}
+
+export default FinishScreen;
+```
+
+Steps:
+
+* Open `DevTools`
+* Select `Components`
+* Click on `App` then open `Reducer`
+* In `status`, click and change to `finished`
+* Expected: `FinishScreen` component is visible.
+
+![Finish Screen component visible](../img/section16-lecture198-001.png)
+
+#### 198.2.2 Out-of-bounds index at last question
+**Subsection Summary**
+- **Purpose**: Expose the bug where advancing past the last question causes `index` to exceed the `questions` array bounds.
+- **Content**: When clicking "Next" on the last question, `index` becomes equal to `numQuestions`, so `questions[index]` is `undefined` and the app can crash or render incorrectly.
+- **Image**: `../img/section16-lecture198-002.png` shows the error (e.g., index = 15 when array length is 15, valid indices 0–14).
+
+* Going to the last question.
+
+![Issue in last question - index = 15 does not exist](../img/section16-lecture198-002.png)
+
+#### 198.2.3 Fixing NextButton with numQuestions check
+**Subsection Summary**
+- **Purpose**: Fix the out-of-bounds bug by rendering "Next" only when `index < numQuestions - 1`.
+- **Content**: `NextButton` now receives `index` and `numQuestions`; it shows the Next button only for non-last questions. On the last question, nothing is rendered yet (Finish button added in 198.2.4).
+- **Key pattern**: Conditional rendering based on `index` and `numQuestions` to control navigation flow.
+
+```jsx
+/* src/components/NextButton.jsx */
+const NextButton = ({ dispatch, answer, index, numQuestions }) => {   // 👈🏽 ✅
+  if(answer === null) return null;
+  
+  if(index < numQuestions - 1) return (                               // 👈🏽 ✅
+    <button
+      className="btn btn-ui"
+      onClick={() => dispatch({ type: 'nextQuestion' })}
+    >
+      Next
+    </button>
+  )
+}
+export default NextButton;
+```
+
+in the meantime:
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [
+    { questions, status, index, answer, points }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0)
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress 
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton
+              dispatch={dispatch}
+              answer={answer}
+              index={index}                                                       {/* 👈🏽 ✅ */}
+              numQuestions={numQuestions}                                         {/* 👈🏽 ✅ */}
+            />
+          </>
+        }
+        {status === "finished" && 
+          <FinishScreen 
+            points={points} 
+            maxPossiblePoints={maxPossiblePoints}
+          />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+![last index - last question - no Next button](../img/section16-lecture198-003.png)
+
+#### 198.2.4 Finish button on last question
+**Subsection Summary**
+- **Purpose**: Add a "Finish" button that appears on the last question instead of "Next".
+- **Content**: When `index === numQuestions - 1`, render a button that dispatches `{ type: 'finish' }` instead of `{ type: 'nextQuestion' }`. This prevents incrementing `index` beyond bounds and transitions the quiz to the finished state.
+- **Key pattern**: Two mutually exclusive conditions—Next for middle questions, Finish for the last one.
+
+```jsx
+/* src/components/NextButton.jsx */
+const NextButton = ({ dispatch, answer, index, numQuestions }) => {
+  if(answer === null) return null;
+  if(index < numQuestions - 1) return (
+    <button
+      className="btn btn-ui"
+      onClick={() => dispatch({ type: 'nextQuestion' })}
+    >
+      Next
+    </button>
+  )
+  
+  if(index === numQuestions - 1)                                                    // 👈🏽 ✅
+    return ( 
+    <button
+      className="btn btn-ui"
+      onClick={() => dispatch({ type: 'finish' })}
+    >
+      Finish
+    </button>
+  )
+}
+
+export default NextButton;
+```
+
+#### 198.2.5 Adding 'finish' reducer case
+**Subsection Summary**
+- **Purpose**: Handle the `finish` action in the reducer to set `status: "finished"`.
+- **Content**: Add `case "finish"` returning `{ ...state, status: "finished" }`. When dispatched from the Finish button, the app switches to the `status === "finished"` branch and renders `FinishScreen`.
+- **Key pattern**: Reducer case for state transition without changing `index` or `points`.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    case "finish":                                                // 👈🏽 ✅
+      return {
+        ...state,
+        status: "finished",
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [
+    { questions, status, index, answer, points }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0)
+  // console.log(questions)
+  // console.log(maxPossiblePoints)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress 
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton
+              dispatch={dispatch}
+              answer={answer}
+              index={index}
+              numQuestions={numQuestions}
+            />
+          </>
+        }
+        {status === "finished" && <FinishScreen points={points} maxPossiblePoints={maxPossiblePoints}/>}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 198.2.6 Highscore state and reducer update
+**Subsection Summary**
+- **Purpose**: Add highscore tracking to state and update it when finishing the quiz.
+- **Content**: Add `highscore: 0` to `initialState`; in the `finish` case, set `highscore` to `Math.max(state.points, state.highscore)`. Destructure `highscore` from state and pass it to `FinishScreen`.
+- **Key pattern**: Derived/in-session persistence of best score within the current Reducer state.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+  highscore: 0,                                               // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore:                                                        // 👈🏽 ✅ (2)
+          state.points > state.highscore ? 
+            state.points : 
+            state.highscore,
+      }
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [
+    { questions, status, index, answer, points, highscore }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0)
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress 
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton
+              dispatch={dispatch}
+              answer={answer}
+              index={index}
+              numQuestions={numQuestions}
+            />
+          </>
+        }
+        {status === "finished" && 
+          <FinishScreen
+            points={points}
+            maxPossiblePoints={maxPossiblePoints}
+            highscore={highscore}                                                     {/* 👈🏽 ✅ (3) */}
+          />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 198.2.7 FinishScreen with emoji feedback and highscore display
+**Subsection Summary**
+- **Purpose**: Enhance `FinishScreen` with percentage-based emoji feedback and highscore display.
+- **Content**: Accept `highscore` prop; compute percentage; assign emoji based on percentage ranges (🥇 100%, 🎉 80–99%, 😃 50–79%, 🤔 1–49%, 🤦🏽 0%); render highscore below the result.
+- **Key pattern**: Simple conditional logic for user feedback; highscore displayed as `(Highscore: X points)`.
+- **Image**: `../img/section16-lecture198-004.png` shows the finish screen with highscore and emoji on the last question / finish state.
+
+```jsx
+/* src/components/FinishScreen.jsx */
+const FinishScreen = ({ points, maxPossiblePoints, highscore }) => {                  // 👈🏽 ✅ (1)
+  const percentage = (points / maxPossiblePoints) * 100;
+  let emoji;
+  if(percentage === 100) emoji = '🥇';
+  if(percentage >=80 && percentage < 100) emoji = '🎉'
+  if(percentage >=50 && percentage < 80) emoji = '😃'
+  if(percentage >=0 && percentage < 50) emoji = '🤔'
+  if(percentage === 0) emoji = '🤦🏽';
+  return (
+    <>
+      <p className="result">
+        <span>{emoji}</span> You scored <strong>{points}</strong> out of {maxPossiblePoints} ({Math.ceil(percentage)}%)
+      </p>
+      <p className="highscore">(Highscore: {highscore} points)</p>                      {/* 👈🏽 ✅ (2) */}
+    </>
+  )
+}
+export default FinishScreen;
+```
+
+![highscore - last question and finish screen](../img/section16-lecture198-004.png)
+
+### 🐞 198.3 Issues:
+
+- FinishScreen emoji logic uses sequential `if` statements without `else if`, causing the last matching condition to overwrite earlier ones when ranges overlap (e.g., `percentage === 0` overwrites the 0–50% range).
+- Division by zero when `maxPossiblePoints === 0` (e.g., empty questions array) in FinishScreen percentage calculation.
+- `NextButton` returns `undefined` when neither `index < numQuestions - 1` nor `index === numQuestions - 1` (edge case when index is out of bounds).
+- Highscore is stored only in Reducer state and is lost on page refresh; no `localStorage` or backend persistence.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| FinishScreen emoji logic overlapping conditions | ⚠️ Identified | `src/components/FinishScreen.jsx:6-10` — sequential `if` statements; `percentage === 0` overwrites `percentage >= 0 && percentage < 50` |
+| Division by zero when maxPossiblePoints is 0 | ⚠️ Identified | `src/components/FinishScreen.jsx:2` — `(points / maxPossiblePoints) * 100` when `maxPossiblePoints === 0` |
+| NextButton returns undefined in edge case | ℹ️ Low Priority | `src/components/NextButton.jsx:1-22` — no explicit `return null` when index out of bounds |
+| Highscore lost on page refresh | ℹ️ Informational | `src/App.jsx:18,59-63` — highscore in Reducer state only; no persistence |
+
+### 🧱 198.4 Pending Fixes (TODO)
+
+- [ ] Use `else if` in FinishScreen emoji logic to avoid overlapping conditions (e.g., `if (percentage === 100) emoji = '🥇'; else if (percentage >= 80) emoji = '🎉'; ... else if (percentage === 0) emoji = '🤦🏽'; else emoji = '🤔';`).
+- [ ] Add guard for `maxPossiblePoints === 0` in `src/components/FinishScreen.jsx` (e.g., `const percentage = maxPossiblePoints > 0 ? (points / maxPossiblePoints) * 100 : 0;`).
+- [ ] Add explicit `return null` at end of `NextButton` for edge case when `index` is out of bounds.
+- [ ] Consider persisting highscore to `localStorage` in the `finish` reducer case (or via `useEffect` when `status === 'finished'`).
+
+[↑ top - 198. Lesson 198 — *Finishing a Quiz*](#-198-lesson-198--finishing-a-quiz)
 
 
 
