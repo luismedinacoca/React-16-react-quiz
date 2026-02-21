@@ -4678,6 +4678,279 @@ export default FinishScreen;
 [↑ top - 198. Lesson 198 — *Finishing a Quiz*](#-198-lesson-198--finishing-a-quiz)
 
 
+<br>
+
+## 🔧 199. Lesson 199 — *Restarting a Quiz*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [199. Lesson 199 — *Restarting a Quiz*](#-199-lesson-199--restarting-a-quiz)
+- [199.1 Context](#1991-context)
+- [199.2 Updating code/theory according the context](#1992-updating-codetheory-according-the-context)
+  - [199.2.1 Restart button in FinishScreen](#19921-restart-button-in-finishscreen)
+  - [199.2.2 Adding restart reducer case in App](#19922-adding-restart-reducer-case-in-app)
+  - [199.2.3 Restart flow verification - questions still available](#19923-restart-flow-verification---questions-still-available)
+- [199.3 Issues](#1993-issues)
+- [199.4 Pending Fixes (TODO)](#1994-pending-fixes-todo)
+
+### 🧠 199.1 Context:
+
+This lesson implements the **restart** flow: allowing users to play the quiz again after finishing, without refreshing the page. The restart action resets quiz progress (index, answer, points) while preserving the loaded questions and the highscore.
+
+**Key Concepts**
+
+1. **Restart Action**: A `restart` action type is dispatched when the user clicks the "Restart" button on the `FinishScreen`. The reducer handles it by returning a new state that brings the user back to the Start Screen.
+
+2. **State Reset with Preservation**: The `restart` reducer case must reset `status`, `index`, `answer`, and `points` to their initial values, but **preserve** `questions` (to avoid refetching) and `highscore` (user achievement across attempts).
+
+3. **Spread of `initialState`**: Using `{ ...initialState, status: "ready", questions: state.questions, highscore: state.highscore }` is preferred over manually assigning each field—it ensures future state properties are included and avoids duplication.
+
+4. **Passing `dispatch` to FinishScreen**: `FinishScreen` receives `dispatch` as a prop so it can trigger `dispatch({ type: "restart" })` when the Restart button is clicked.
+
+**Advantages**
+
+- Single dispatch call resets the entire quiz flow; logic is centralized in the reducer.
+- No network refetch—questions stay in memory for instant restart.
+- Highscore persists across restarts within the same session.
+- Using `initialState` spread keeps the restart logic maintainable as state grows.
+
+**Disadvantages / Gotchas**
+
+- If `initialState` is defined inside the component, it would be recreated on each render; defining it outside (as in the project) avoids this.
+- Restart does not clear error state if the quiz previously failed to load; the flow assumes `status: "ready"` and an already-loaded `questions` array.
+
+**When to Consider Alternatives**
+
+- If questions change frequently, consider refetching on restart.
+- For full app reset (including highscore), add a separate "Reset Highscore" or "New Game" action.
+- If using `localStorage` for highscore, ensure restart does not overwrite persisted highscore incorrectly.
+
+### ⚙️ 199.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Implement the restart functionality so users can play the quiz again from the Start Screen after finishing.
+- **Problem**: Without a restart action, users would need to refresh the page to play again, losing in-memory state and requiring a new data fetch.
+- **Connection**: The subsections build the restart flow step by step:
+  1. Add a Restart button in `FinishScreen` that dispatches `{ type: "restart" }`.
+  2. Handle the `restart` case in the reducer by resetting quiz state while preserving `questions` and `highscore`.
+  3. Verify that after restart, the user returns to Start Screen and questions remain available without refetching.
+
+#### 199.2.1 Restart button in FinishScreen
+**Subsection Summary**
+- **Purpose**: Add a "Restart" button to `FinishScreen` that triggers the restart flow.
+- **Content**: The button calls `onClick={() => dispatch({ type: "restart" })}`; `FinishScreen` must receive `dispatch` as a prop from `App`.
+- **Key Pattern**: Event handlers in child components use `dispatch` to send actions to the parent reducer.
+
+```jsx
+/* src/components/FinishScreen.jsx */
+const FinishScreen = ({ points, maxPossiblePoints, highscore, dispatch }) => {
+  const percentage = (points / maxPossiblePoints) * 100;
+
+  let emoji;
+
+  if (percentage === 100) emoji = "🥇";
+  if (percentage >= 80 && percentage < 100) emoji = "🎉";
+  if (percentage >= 50 && percentage < 80) emoji = "😃";
+  if (percentage > 0 && percentage < 50) emoji = "🤔";
+  if (percentage === 0) emoji = "🤦🏽";
+  return (
+    <>
+      <p className="result">
+        <span>{emoji}</span> You scored <strong>{points}</strong> out of {maxPossiblePoints} ({Math.ceil(percentage)}%)
+      </p>
+      <p className="highscore">(Highscore: {highscore} points)</p>
+      <button className="btn btn-ui" onClick={() => dispatch({ type: "restart" })}>
+        Restart
+      </button>
+    </>
+  );
+};
+
+export default FinishScreen;
+```
+
+#### 199.2.2 Adding 'restart' reducer case in App
+**Subsection Summary**
+- **Purpose**: Implement the `restart` case in the reducer to reset quiz state to the Start Screen.
+- **Content**: The reducer returns `{ ...initialState, status: "ready", questions: state.questions, highscore: state.highscore }` so that index, answer, points, and status are reset, while questions and highscore are preserved.
+- **Key Pattern**: Spreading `initialState` ensures all fields are reset; explicit overrides for `questions` and `highscore` preserve data that should persist across restarts.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+  highscore: 0,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case 'start':
+      return {
+        ...state,
+        status: 'active'
+      }
+    case 'newAnswer': {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points: action.payload === question.correctOption 
+          //? state.points + 1 
+          ? state.points + question.points
+          : state.points,
+      }
+    }
+    case 'nextQuestion': 
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      }
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore: 
+          state.points > state.highscore ? 
+            state.points : 
+            state.highscore,
+      }
+    case "restart":
+      return {
+        ...initialState,
+        status: "ready",
+        questions: state.questions,
+        highscore: state.highscore,
+      };
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [
+    { questions, status, index, answer, points, highscore }, 
+    dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0)
+  // console.log(questions)
+  // console.log(maxPossiblePoints)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && 
+          <StartScreen
+            numQuestions={numQuestions}
+            dispatch={dispatch} 
+          />
+        }
+        {status === "active" &&
+          <>
+            <Progress 
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question 
+              question={questions[index]}
+              answer={answer}
+              dispatch={dispatch}
+            />
+            <NextButton
+              dispatch={dispatch}
+              answer={answer}
+              index={index}
+              numQuestions={numQuestions}
+            />
+          </>
+        }
+        {status === "finished" && 
+          <FinishScreen
+            points={points}
+            maxPossiblePoints={maxPossiblePoints}
+            highscore={highscore}
+            dispatch={dispatch}
+          />}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 199.2.3 Restart flow verification - questions still available
+**Subsection Summary**
+- **Purpose**: Verify that after clicking Restart, the user returns to the Start Screen and questions remain in memory without refetching.
+- **Content**: The screenshot confirms the restart flow works: the app shows the Start Screen with question count, and no loading state occurs because `questions` were preserved in the reducer's `restart` case.
+- **Image**: `../img/section16-lecture199-001.png` illustrates the Start Screen after restart, with questions still available.
+
+![questions still are available](../img/section16-lecture199-001.png)
+
+### 🐞 199.3 Issues:
+
+- `FinishScreen` inherits emoji logic issues from Lesson 198 (sequential `if` statements, overlapping conditions).
+- Division by zero when `maxPossiblePoints === 0` in `FinishScreen` percentage calculation (same as Lesson 198).
+- Restart does not reset `status: "error"`—if the quiz had failed to load, clicking Restart would still show the error state (restart assumes `questions` is already loaded).
+- Restart button lacks explicit `aria-label` for accessibility.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| FinishScreen emoji logic overlapping conditions | ⚠️ Identified | `src/components/FinishScreen.jsx:6-10` — same as Lesson 198 |
+| Division by zero when maxPossiblePoints is 0 | ⚠️ Identified | `src/components/FinishScreen.jsx:2` — `(points / maxPossiblePoints) * 100` when `maxPossiblePoints === 0` |
+| Restart does not handle error state | ℹ️ Low Priority | `src/App.jsx:64-77` — restart case sets `status: "ready"` but keeps questions; if status was "error", questions may be empty |
+| Restart button lacks aria-label | ℹ️ Low Priority | `src/components/FinishScreen.jsx:16` — `<button>` missing `aria-label="Restart quiz"` |
+
+### 🧱 199.4 Pending Fixes (TODO)
+
+- [ ] Use `else if` in FinishScreen emoji logic to avoid overlapping conditions (`src/components/FinishScreen.jsx:6-10`).
+- [ ] Add guard for `maxPossiblePoints === 0` in `src/components/FinishScreen.jsx` (e.g., `const percentage = maxPossiblePoints > 0 ? (points / maxPossiblePoints) * 100 : 0`).
+- [ ] Consider resetting to `status: "loading"` and refetching when restart is triggered from error state, or add an explicit "Try Again" flow for error recovery.
+- [ ] Add `aria-label="Restart quiz"` to the Restart button in `src/components/FinishScreen.jsx:16` for screen-reader accessibility.
+
+[↑ top - 199. Lesson 199 — *Restarting a Quiz*](#-199-lesson-199--restarting-a-quiz)
+
+
+
+
 
 
 
