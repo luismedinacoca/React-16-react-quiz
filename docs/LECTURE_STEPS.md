@@ -1927,8 +1927,6 @@ stateDiagram-v2
 
 [↑ top - 191. Lesson 191 — *Loading Questions from a Fake API*](#191-lesson-191-loading-questions-from-a-fake-api)
 
-
-
 <br>
 
 ## 🔧 192. Lesson 192 — *Handling Loading, Error, and Ready Status*
@@ -4947,6 +4945,720 @@ export default App;
 - [ ] Add `aria-label="Restart quiz"` to the Restart button in `src/components/FinishScreen.jsx:16` for screen-reader accessibility.
 
 [↑ top - 199. Lesson 199 — *Restarting a Quiz*](#-199-lesson-199--restarting-a-quiz)
+
+
+<br>
+
+## 🔧 200. Lesson 200 — *Setting Up a Timer With useEffect*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [200. Lesson 200 — *Setting Up a Timer With useEffect*](#-200-lesson-200--setting-up-a-timer-with-useeffect)
+- [200.1 Context](#2001-context)
+- [200.2 Updating code/theory according the context](#2002-updating-codetheory-according-the-context)
+  - [200.2.1 Creating the Footer component](#20021-creating-the-footer-component)
+  - [200.2.2 Initial Timer component placeholder](#20022-initial-timer-component-placeholder)
+  - [200.2.3 Integrating Footer and Timer into App](#20023-integrating-footer-and-timer-into-app)
+  - [200.2.4 Using setInterval inside useEffect](#20024-using-setinterval-inside-useeffect)
+  - [200.2.5 Adding secondsRemaining state and tick action](#20025-adding-secondsremaining-state-and-tick-action)
+  - [200.2.6 Dispatching tick from Timer (interval leak)](#20026-dispatching-tick-from-timer-interval-leak)
+  - [200.2.7 Auto-finishing when timer reaches zero](#20027-auto-finishing-when-timer-reaches-zero)
+  - [200.2.8 Cleaning up interval with clearInterval](#20028-cleaning-up-interval-with-clearinterval)
+  - [200.2.9 Dynamic timer initialization on quiz start](#20029-dynamic-timer-initialization-on-quiz-start)
+  - [200.2.10 Formatting time display as MM:SS](#200210-formatting-time-display-as-mmss)
+  - [200.2.11 Quiz state diagram with timer flow](#200211-quiz-state-diagram-with-timer-flow)
+- [200.3 Issues](#2003-issues)
+- [200.4 Pending Fixes (TODO)](#2004-pending-fixes-todo)
+
+### 🧠 200.1 Context:
+
+This lesson implements a **countdown timer** for the quiz using React's `useEffect` hook. The timer displays remaining time in `MM:SS` format and automatically finishes the quiz when it reaches zero.
+
+**Key Concepts**
+
+1. **Side effects with `useEffect`**: Timers (`setInterval`) are side effects—they run outside React's render cycle. `useEffect` is the correct place to start intervals when a component mounts or when specific dependencies change.
+
+2. **Cleanup function**: `setInterval` returns an ID. If the component unmounts or the effect re-runs, the old interval keeps firing unless cleared. The **cleanup function** (returned from `useEffect`) must call `clearInterval(id)` to avoid memory leaks and duplicate intervals.
+
+3. **State via `useReducer`**: The timer value (`secondsRemaining`) lives in the reducer state. `Timer` receives `dispatch` and `secondsRemaining` as props. Each second, the effect dispatches `{ type: "tick" }` to decrement the value.
+
+4. **Initialization on quiz start**: `secondsRemaining` starts as `null` and is set when the quiz starts: `state.questions.length * SECS_PER_QUESTIONS`. This makes the timer depend on the number of questions.
+
+5. **Auto-finish**: The `tick` reducer case transitions to `status: "finished"` when `secondsRemaining === 0`.
+
+**Advantages**
+
+- Timer logic is centralized in the reducer; `Timer` only reads state and dispatches.
+- Cleanup prevents interval accumulation on re-renders.
+- Formatting (`00:00`) improves readability.
+
+**Disadvantages / Gotchas**
+
+- **Without cleanup**: Missing `clearInterval` causes multiple intervals to run, making the timer jump (e.g., every 2 seconds) or decrement multiple times per second.
+- **Restart must reset timer**: The `restart` action must reset `secondsRemaining` (via `initialState` or explicitly). If it is not reset, the next game starts with leftover seconds from the previous run.
+- **`secondsRemaining` when `null`**: `Timer` only renders during `status === "active"`, so `secondsRemaining` is always a number when `Timer` is shown.
+
+**When to Consider Alternatives**
+
+- For more complex timing (pause, resume, different phases), consider a dedicated timing library or `useRef` to store interval ID.
+- For server-sync or real-time clocks, `Date`-based logic or Web Workers might be more appropriate.
+
+### ⚙️ 200.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Set up a countdown timer for the quiz using `useEffect` and `setInterval`, integrated with the reducer state.
+- **Problem**: Timers require side effects and proper cleanup to avoid leaks and duplicate intervals.
+- **Flow**: Subsections build the timer step by step: Footer/Timer structure, `setInterval` in `useEffect`, state and `tick` action, cleanup, initialization on start, and time formatting.
+
+#### 200.2.01 Creating the Footer component
+**Subsection Summary**
+- **Purpose**: Introduces a reusable `Footer` component to wrap layout elements in the active quiz view.
+- **Content**: A simple functional component that renders its `children` inside a `div`.
+- **Usage**: Used later to group `Timer` and `NextButton` in the footer area.
+
+```jsx
+/* src/components/Footer.jsx */
+const Footer = ({ children }) => {
+  return <div>{children}</div>;
+};
+
+export default Footer;
+```
+
+#### 200.2.02 Initial Timer component placeholder
+**Subsection Summary**
+- **Purpose**: Placeholder for the `Timer` component before adding timer logic.
+- **Content**: A minimal component that returns a `div` with the text "Timer".
+- **Next step**: This will be extended with `useEffect` and `setInterval` in later subsections.
+
+```jsx
+/* src/components/Timer.jsx */
+const Timer = () => {
+  return <div>Timer</div>;
+};
+
+export default Timer;
+```
+
+#### 200.2.03 Integrating Footer and Timer into App
+**Subsection Summary**
+- **Purpose**: Wires `Footer` and `Timer` into the active quiz layout in `App.jsx`.
+- **Content**: Imports `Timer` and `Footer`, renders them inside the `status === "active"` block. `Footer` wraps `Timer` and `NextButton`.
+- **Image**: `section16_lecture200-001.png` illustrates the quiz UI with the footer area containing the timer and Next button.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+import Timer from "./components/Timer";                 // 👈🏽 ✅ (1)
+import Footer from "./components/Footer";               // 👈🏽 ✅ (1)
+
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+  highscore: 0,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case "start":
+      return {
+        ...state,
+        status: "active",
+      };
+    case "newAnswer": {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points:
+          action.payload === question.correctOption
+            ? //? state.points + 1
+              state.points + question.points
+            : state.points,
+      };
+    }
+    case "nextQuestion":
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      };
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore: state.points > state.highscore ? state.points : state.highscore,
+      };
+    case "restart":
+      // return {
+      //   ...state,
+      //   status: "ready",
+      //   index: 0,
+      //   answer: null,
+      //   points: 0,
+      // }
+      return {
+        ...initialState,
+        status: "ready",
+        questions: state.questions,
+        highscore: state.highscore,
+      };
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [{ questions, status, index, answer, points, highscore }, dispatch] = useReducer(reducer, initialState);
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0);
+  // console.log(questions)
+  // console.log(maxPossiblePoints)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && <StartScreen numQuestions={numQuestions} dispatch={dispatch} />}
+        {status === "active" && (
+          <>
+            <Progress
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question question={questions[index]} answer={answer} dispatch={dispatch} />
+            <Footer>                              {/* 👈🏽 ✅ (2) */}
+              <Timer />                           {/* 👈🏽 ✅ (3) */}
+              <NextButton
+                dispatch={dispatch}
+                answer={answer}
+                index={index}
+                numQuestions={numQuestions} 
+              />                                  {/* 👈🏽 ✅ (3) */}
+            </Footer>
+          </>
+        )}
+        {status === "finished" && (
+          <FinishScreen points={points} maxPossiblePoints={maxPossiblePoints} highscore={highscore} dispatch={dispatch} />
+        )}
+      </Main>
+    </div>
+  );
+}
+
+export default App;
+```
+
+![Timer is visible](../img/section16_lecture200-001.png)
+
+#### 200.2.04 Using setInterval inside useEffect
+**Subsection Summary**
+- **Purpose**: Demonstrates running `setInterval` inside `useEffect` to execute code every second.
+- **Content**: `useEffect` with empty dependency array `[]` runs once on mount. `setInterval` logs "tick" every 1000ms. Timer displays hardcoded "05:00".
+- **Gotcha**: No cleanup—`clearInterval` is missing. The interval would keep running after unmount; with dependencies this would also cause interval accumulation on re-renders.
+
+```jsx
+/* src/components/Timer.jsx */
+import { useEffect } from "react";
+
+const Timer = () => {
+  useEffect(() => {
+    setInterval(() => {                           // 👈🏽 ✅ (1)
+      console.log("tick");
+    }, 1000);
+  }, []);
+
+  return <div className="timer">05:00</div>;
+};
+
+export default Timer;
+```
+
+#### 200.2.05 Adding secondsRemaining state and tick action
+**Subsection Summary**
+- **Purpose**: Adds `secondsRemaining` to reducer state and a `tick` action to decrement it.
+- **Content**: `initialState` includes `secondsRemaining: 10` (test value). The `tick` case decreases `secondsRemaining` by 1. `Timer` receives `dispatch` and `secondsRemaining` but still displays raw seconds (or placeholder).
+- **Note**: In this intermediate step, `secondsRemaining` is hardcoded in `initialState`; the final version sets it dynamically when the quiz starts.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+import Timer from "./components/Timer";
+import Footer from "./components/Footer";
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+  highscore: 0,
+  secondsRemaining: 10,                           // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case "start":
+      return {
+        ...state,
+        status: "active",
+      };
+    case "newAnswer": {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points:
+          action.payload === question.correctOption
+            ? //? state.points + 1
+              state.points + question.points
+            : state.points,
+      };
+    }
+    case "nextQuestion":
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      };
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore: state.points > state.highscore ? state.points : state.highscore,
+      };
+    case "restart":
+      // return {
+      //   ...state,
+      //   status: "ready",
+      //   index: 0,
+      //   answer: null,
+      //   points: 0,
+      // }
+      return {
+        ...initialState,
+        status: "ready",
+        questions: state.questions,
+        highscore: state.highscore,
+      };
+    case "tick":                              // 👈🏽 ✅ (2)
+      return {
+        ...state,
+        secondsRemaining: state.secondsRemaining - 1,     // 👈🏽 ✅ (3)
+      };
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+
+function App() {
+  const [{ questions, status, index, answer, points, highscore, secondsRemaining }, dispatch] = useReducer(
+    reducer,
+    initialState,
+  );
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0);
+
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && <StartScreen numQuestions={numQuestions} dispatch={dispatch} />}
+        {status === "active" && (
+          <>
+            <Progress
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question question={questions[index]} answer={answer} dispatch={dispatch} />
+            <Footer>
+              <Timer
+                dispatch={dispatch}
+                secondsRemaining={secondsRemaining}                   {/* 👈🏽 ✅ (4) */}
+              />
+              <NextButton dispatch={dispatch} answer={answer} index={index} numQuestions={numQuestions} />
+            </Footer>
+          </>
+        )}
+        {status === "finished" && (
+          <FinishScreen points={points} maxPossiblePoints={maxPossiblePoints} highscore={highscore} dispatch={dispatch} />
+        )}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+#### 200.2.06 Dispatching tick from Timer (interval leak)
+**Subsection Summary**
+- **Purpose**: Timer dispatches `{ type: "tick" }` every second to update state.
+- **Content**: `useEffect` runs `setInterval` that dispatches `tick`. Timer displays `secondsRemaining` as raw number.
+- **Issues**: No `clearInterval` in the cleanup—intervals accumulate on re-renders. Timer jumps every 2 seconds (multiple intervals) and never stops at zero. Image `section16_lecture200-002.png` shows the problematic behavior.
+
+```jsx
+/* src/components/Timer.jsx */
+import { useEffect } from "react";
+const Timer = ({ dispatch, secondsRemaining }) => {
+  useEffect(() => {
+    setInterval(() => {
+      //console.log("tick");
+      dispatch({ type: "tick" });
+    }, 1000);
+  }, [dispatch]);
+  return <div className="timer">{secondsRemaining}</div>;
+};
+export default Timer;
+```
+
+Issue:
+
+* `<Timer />` jumps every each 2 seconds.
+* `<Timer />` goes forever in decreasing.
+
+![](../img/section16_lecture200-002.png)
+
+#### 200.2.07 Auto-finishing when timer reaches zero
+**Subsection Summary**
+- **Purpose**: When `secondsRemaining` reaches 0, the quiz should automatically finish.
+- **Content**: The `tick` case adds `status: state.secondsRemaining === 0 ? "finished" : state.status` so the transition to the finish screen happens when the timer hits zero.
+- **Issue**: Restart bug—if `secondsRemaining` is not properly reset in the `restart` case, each restart uses a smaller remaining time. After several restarts, the quiz may finish immediately.
+
+```jsx
+/*  */
+case "tick":
+  return {
+    ...state,
+    secondsRemaining: state.secondsRemaining - 1,
+    status: 
+      state.secondsRemaining === 0 ? 
+      "finished" : 
+      state.status,       // 👈🏽 ✅
+  };
+```
+
+Issue:
+
+* Restart the Quiz at least 3 times.
+* Each time, total time or remaining time is smaller than the previous one.
+* Forth time, click on `Restart Quiz` button, it goes to finish screen inmediately.
+
+#### 200.2.08 Cleaning up interval with clearInterval
+**Subsection Summary**
+- **Purpose**: Fixes the interval leak by cleaning up when the effect re-runs or the component unmounts.
+- **Content**: Store `setInterval` return value in `id`, and return `() => clearInterval(id)` from `useEffect`. This cleanup runs before the next effect execution or on unmount.
+- **Result**: Only one interval runs at a time; the timer decrements smoothly every second.
+
+```jsx
+/* src/components/Timer.jsx */
+import { useEffect } from "react";
+
+const Timer = ({ dispatch, secondsRemaining }) => {
+  useEffect(() => {
+    const id = setInterval(() => {            // 👈🏽 ✅ (1)
+      dispatch({ type: "tick" });
+    }, 1000);
+    return () => clearInterval(id);           // 👈🏽 ✅ (2)
+  }, [dispatch]);
+
+  return <div className="timer">{secondsRemaining}</div>;
+};
+
+export default Timer;
+```
+
+#### 200.2.09 Dynamic timer initialization on quiz start
+**Subsection Summary**
+- **Purpose**: Initialize the timer based on the number of questions when the quiz starts.
+- **Content**: `secondsRemaining` starts as `null` in `initialState`. The `start` case sets `secondsRemaining: state.questions.length * SECS_PER_QUESTIONS` (e.g. 30 seconds per question). The `restart` case spreads `initialState`, which resets `secondsRemaining` to `null`; the next `start` will set it again correctly.
+- **Image**: `section16_lecture200-003.png` shows the timer displaying the computed total seconds based on questions.
+
+```jsx
+/* src/App.jsx */
+import Header from "./components/Header";
+import { useEffect, useReducer } from "react";
+import Main from "./components/Main";
+import Loader from "./components/Loader";
+import Error from "./components/Error";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
+import NextButton from "./components/NextButton";
+import Progress from "./components/Progress";
+import FinishScreen from "./components/FinishScreen";
+import Timer from "./components/Timer";
+import Footer from "./components/Footer";
+const SECS_PER_QUESTIONS = 30;
+const initialState = {
+  questions: [],
+  status: "loading", // 'loading' 'error', 'ready', 'active', 'finished'
+  index: 0,
+  answer: null,
+  points: 0,
+  highscore: 0,
+  secondsRemaining: null,                       // 👈🏽 ✅ (1)
+};
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "dataReceived":
+      return {
+        ...state,
+        questions: action.payload,
+        status: "ready",
+      };
+    case "dataFailed":
+      return {
+        ...state,
+        status: "error",
+      };
+    case "start":
+      return {
+        ...state,
+        status: "active",
+        secondsRemaining: state.questions.length * SECS_PER_QUESTIONS,      // 👈🏽 ✅ (2)
+      };
+    case "newAnswer": {
+      const question = state.questions.at(state.index);
+      return {
+        ...state,
+        answer: action.payload,
+        points:
+          action.payload === question.correctOption
+            ? //? state.points + 1
+              state.points + question.points
+            : state.points,
+      };
+    }
+    case "nextQuestion":
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      };
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore: state.points > state.highscore ? state.points : state.highscore,
+      };
+    case "restart":
+      // return {
+      //   ...state,
+      //   status: "ready",
+      //   index: 0,
+      //   answer: null,
+      //   points: 0,
+      // }
+      return {
+        ...initialState,
+        status: "ready",
+        questions: state.questions,
+        highscore: state.highscore,
+      };
+    case "tick":
+      return {
+        ...state,
+        secondsRemaining: state.secondsRemaining - 1,
+        status: state.secondsRemaining === 0 ? "finished" : state.status,
+      };
+    default:
+      throw new Error("Action Unknown!");
+  }
+};
+function App() {
+  const [{ questions, status, index, answer, points, highscore, secondsRemaining }, dispatch] = useReducer(
+    reducer,
+    initialState,
+  );
+  const numQuestions = questions.length;
+  const maxPossiblePoints = questions.reduce((prev, curr) => prev + curr.points, 0);
+  useEffect(() => {
+    fetch("http://localhost:8000/questions")
+      .then((resp) => resp.json())
+      .then((data) => dispatch({ type: "dataReceived", payload: data }))
+      .catch((error) => dispatch({ type: "dataFailed" }));
+  }, []);
+  return (
+    <div className="app">
+      <Main>
+        <Header />
+        {status === "loading" && <Loader />}
+        {status === "error" && <Error />}
+        {status === "ready" && <StartScreen numQuestions={numQuestions} dispatch={dispatch} />}
+        {status === "active" && (
+          <>
+            <Progress
+              index={index}
+              numQuestions={numQuestions}
+              points={points}
+              maxPossiblePoints={maxPossiblePoints}
+              answer={answer}
+            />
+            <Question question={questions[index]} answer={answer} dispatch={dispatch} />
+            <Footer>
+              <Timer dispatch={dispatch} secondsRemaining={secondsRemaining} />
+              <NextButton dispatch={dispatch} answer={answer} index={index} numQuestions={numQuestions} />
+            </Footer>
+          </>
+        )}
+        {status === "finished" && (
+          <FinishScreen points={points} maxPossiblePoints={maxPossiblePoints} highscore={highscore} dispatch={dispatch} />
+        )}
+      </Main>
+    </div>
+  );
+}
+export default App;
+```
+
+![seconds by questions](../img/section16_lecture200-003.png)
+
+#### 200.2.10 Formatting time display as MM:SS
+**Subsection Summary**
+- **Purpose**: Format `secondsRemaining` as `MM:SS` with leading zeros for a readable display.
+- **Content**: Compute `mins = Math.floor(secondsRemaining / 60)` and `seconds = secondsRemaining % 60`. Pad with leading zero when `< 10`. Render as `` `${minsString}:${secondsString}` ``.
+- **Image**: `section16_lecture200-004.png` shows the timer displaying the formatted `00:00` style time.
+
+```jsx
+/* src/components/Timer.jsx */
+import { useEffect } from "react";
+
+const Timer = ({ dispatch, secondsRemaining }) => {
+  const mins = Math.floor(secondsRemaining / 60);                             // 👈🏽 ✅ (1) 
+  const seconds = secondsRemaining % 60;                                      // 👈🏽 ✅ (2)
+
+  // format the time to be 00:00
+  const minsString = mins < 10 ? `0${mins}` : mins;                           // 👈🏽 ✅ (3)
+  const secondsString = seconds < 10 ? `0${seconds}` : seconds;               // 👈🏽 ✅ (4)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      dispatch({ type: "tick" });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [dispatch]);
+
+  return <div className="timer">{`${minsString}:${secondsString}`}</div>;     {/* 👈🏽 ✅ (5) */}
+};
+
+export default Timer;
+```
+
+![time format](../img/section16_lecture200-004.png)
+
+#### 200.2.11 Quiz state diagram with timer flow
+**Subsection Summary**
+- **Purpose**: Provides a visual overview of the complete quiz state machine, including the timer-driven transition to the finished state.
+- **Content**: A Mermaid `stateDiagram-v2` showing `Loading`, `Ready`, `Active` (with Question/Answered substates), `Finished`, and `Error`. Transitions include `tick(secondsRemaining=0)` from Active to Finished, alongside the manual `finish` action.
+- **Key detail**: The diagram documents that the quiz can reach `Finished` either by the user answering all questions (`finish`) or by the timer reaching zero (`tick`).
+
+```mermaid
+stateDiagram-v2
+    [*] --> Loading
+
+    Loading: status=loading, questions=[]
+    Loading --> Ready: dataReceived
+    Loading --> Error: dataFailed
+
+    Ready: status=ready, questions=data, index=0
+    Ready --> Active: start
+
+    Error: status=error, questions=[]
+    Error --> Loading: retry
+
+    state Active {
+        [*] --> Question
+        Question --> Answered: newAnswer
+        Answered --> Question: nextQuestion
+    }
+    Active --> Finished: finish | tick(secondsRemaining=0)
+
+    Finished: status=finished, highscore actualizado
+    Finished --> Ready: restart
+
+    note right of Loading: useEffect fetch /questions
+    note right of Ready: StartScreen "Let's start"
+    note right of Active: Progress, Question, Timer, NextButton
+    note right of Finished: FinishScreen "Restart Quiz"
+```
+
+### 🐞 200.3 Issues:
+| Issue | Status | Log/Error |
+|---|---|---|
+| Interval leak without clearInterval | ✅ Fixed in 200.2.8 | `src/components/Timer.jsx` — missing `return () => clearInterval(id)` causes duplicate intervals |
+| Restart not resetting secondsRemaining | ✅ Fixed in 200.2.9 | `src/App.jsx` — restart must use `initialState` with `secondsRemaining: null` and set on `start` |
+| Timer shows raw seconds before formatting | ✅ Fixed in 200.2.10 | `src/components/Timer.jsx` — format as `MM:SS` with leading zeros |
+| Footer uses generic div instead of semantic footer | ℹ️ Low Priority | `src/components/Footer.jsx:2` — consider `<footer>` for accessibility |
+
+### 🧱 200.4 Pending Fixes (TODO)
+
+- [ ] Consider using `<footer>` in `src/components/Footer.jsx` for semantic HTML and better screen-reader support.
+- [ ] Add `aria-live="polite"` to the timer display in `src/components/Timer.jsx` so screen readers announce time updates.
+
+[↑ top - 200. Lesson 200 — *Setting Up a Timer With useEffect*](#-200-lesson-200--setting-up-a-timer-with-useeffect)
 
 
 

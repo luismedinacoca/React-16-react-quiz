@@ -97,7 +97,7 @@ h4 {
   width: 100%
 }
 
-.progress {
+.progress, .footer {
   margin: 2rem 0 4rem;
   width: 160%;
   display: flex;
