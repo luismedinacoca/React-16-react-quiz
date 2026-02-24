@@ -1,9 +1,117 @@
+# 👨🏾💻 Project: 16-react-quiz
 
+## 📋 Project Overview
+
+### What This Project Does
+- **React Quiz App**: Interactive quiz application where users answer multiple-choice questions about React and JavaScript.
+- **DateCounter Demo**: Educational component demonstrating `useReducer` vs `useState` for state management.
+- **Fake API Integration**: Loads questions from `json-server` (REST API) with loading, error, and ready states.
+- **Timer**: Countdown timer during quiz with `useEffect` for interval management.
+- **Progress Tracking**: Displays current question, score, highscore, and completion status.
+
+### Technology Stack
+- **React 19** with JSX
+- **Vite** for build tooling and dev server
+- **json-server** for fake REST API (questions data)
+- **ESLint** for code quality
+- **concurrently** for running Vite and json-server together
+
+### Key Components
+- **App.jsx**: Main orchestrator using `useReducer` for global quiz state (questions, status, index, answer, points, timer).
+- **Main.jsx**: Renders StartScreen, Question, or FinishScreen based on status.
+- **Question, Options, NextButton, Progress, Timer, FinishScreen, StartScreen**: Quiz UI components.
+- **Loader, Error**: Loading and error states.
+- **DateCounter.jsx**: Standalone demo for `useReducer` lessons.
+
+---
+
+## 📑 Table of Contents
+
+- [👨🏾💻 Project: 16-react-quiz](#-project-16-react-quiz)
+- [📋 Project Overview](#-project-overview)
+- [📑 Table of Contents](#-table-of-contents)
+- [📁 Visual Project Tree](#-visual-project-tree)
+- [🧳 Section 16: The Advanced useReducer Hook](#-section-16-the-advanced-usereducer-hook)
+  <details>
+  <summary>Section 16 - Lessons</summary>
+
+  * [📚 Lesson 187: Yet Another Hook: useReducer](#-187-lesson-187--yet-another-hook-usereducer)
+  * [📚 Lesson 188: Managing Related Pieces of State](#-188-lesson-188--managing-related-pieces-of-state)
+  * [📚 Lesson 189: Managing State With useReducer](#-189-lesson-189--managing-state-with-usereducer)
+  * [📚 Lesson 190: The "React Quiz" App](#-190-lesson-190--the-react-quiz-app)
+  * [📚 Lesson 191: Loading Questions from a Fake API](#-191-lesson-191--loading-questions-from-a-fake-api)
+  * [📚 Lesson 192: Handling Loading, Error, and Ready Status](#-192-lesson-192--handling-loading-error-and-ready-status)
+  * [📚 Lesson 193: Starting a New Quiz](#-193-lesson-193--starting-a-new-quiz)
+  * [📚 Lesson 194: Displaying Questions](#-194-lesson-194--displaying-questions)
+  * [📚 Lesson 195: Handling New Answers](#-195-lesson-195--handling-new-answers)
+  * [📚 Lesson 196: Moving to the Next Question](#-196-lesson-196--moving-to-the-next-question)
+  * [📚 Lesson 197: Displaying Progress](#-197-lesson-197--displaying-progress)
+  * [📚 Lesson 198: Finishing a Quiz](#-198-lesson-198--finishing-a-quiz)
+  * [📚 Lesson 199: Restarting a Quiz](#-199-lesson-199--restarting-a-quiz)
+  * [📚 Lesson 200: Setting Up a Timer With useEffect](#-200-lesson-200--setting-up-a-timer-with-useeffect)
+  * [📚 Lesson 201: Section Summary: useState vs. useReducer](#-201-lesson-201--section-summary-usestate-vs-usereducer)
+  </details>
+
+---
+
+## 📁 Visual Project Tree
+
+```
+📁 16-react-quiz
+├── 📁 public
+│   ├── 📄 logo192.png
+│   └── 📄 logo512.png
+├── 📁 src
+│   ├── 📁 components
+│   │   ├── 📄 DateCounter.jsx      # useReducer demo (lessons 187–189)
+│   │   ├── 📄 Error.jsx            # Error state UI
+│   │   ├── 📄 FinishScreen.jsx     # Quiz completion screen
+│   │   ├── 📄 Footer.jsx           # App footer
+│   │   ├── 📄 Header.jsx           # Quiz header
+│   │   ├── 📄 Loader.jsx           # Loading spinner
+│   │   ├── 📄 Main.jsx             # Renders Start/Question/Finish based on status
+│   │   ├── 📄 NextButton.jsx       # Next question button
+│   │   ├── 📄 Options.jsx          # Answer options list
+│   │   ├── 📄 Progress.jsx         # Progress bar and score
+│   │   ├── 📄 Question.jsx         # Question display
+│   │   ├── 📄 StartScreen.jsx      # Quiz start screen
+│   │   └── 📄 Timer.jsx            # Countdown timer
+│   ├── 📄 App.jsx                  # Main app — useReducer, state, effects
+│   ├── 📄 main.jsx                 # Entry point
+│   └── 📄 index.css                # Global styles
+├── 📁 data
+│   └── 📄 questions.json           # Quiz questions (json-server source)
+├── 📁 docs
+│   └── 📄 LECTURE_STEPS.md         # This document
+├── 📁 img                           # Lecture screenshots
+├── 📄 index.html
+├── 📄 package.json
+├── 📄 vite.config.js
+└── 📄 eslint.config.js
+```
 
 <br>
 
 ## 🧳 Section 16: *The Advanced useReducer Hook*
 
+### 📑 Table of Contents
+- [📚 Lesson 187: Yet Another Hook: useReducer](#-187-lesson-187--yet-another-hook-usereducer)
+- [📚 Lesson 188: Managing Related Pieces of State](#-188-lesson-188--managing-related-pieces-of-state)
+- [📚 Lesson 189: Managing State With useReducer](#-189-lesson-189--managing-state-with-usereducer)
+- [📚 Lesson 190: The "React Quiz" App](#-190-lesson-190--the-react-quiz-app)
+- [📚 Lesson 191: Loading Questions from a Fake API](#-191-lesson-191--loading-questions-from-a-fake-api)
+- [📚 Lesson 192: Handling Loading, Error, and Ready Status](#-192-lesson-192--handling-loading-error-and-ready-status)
+- [📚 Lesson 193: Starting a New Quiz](#-193-lesson-193--starting-a-new-quiz)
+- [📚 Lesson 194: Displaying Questions](#-194-lesson-194--displaying-questions)
+- [📚 Lesson 195: Handling New Answers](#-195-lesson-195--handling-new-answers)
+- [📚 Lesson 196: Moving to the Next Question](#-196-lesson-196--moving-to-the-next-question)
+- [📚 Lesson 197: Displaying Progress](#-197-lesson-197--displaying-progress)
+- [📚 Lesson 198: Finishing a Quiz](#-198-lesson-198--finishing-a-quiz)
+- [📚 Lesson 199: Restarting a Quiz](#-199-lesson-199--restarting-a-quiz)
+- [📚 Lesson 200: Setting Up a Timer With useEffect](#-200-lesson-200--setting-up-a-timer-with-useeffect)
+- [📚 Lesson 201: Section Summary: useState vs. useReducer](#-201-lesson-201--section-summary-usestate-vs-usereducer)
+
+---
 
 ## 🔧 187. Lesson 187 — *Yet Another Hook: useReducer*
 
@@ -5661,6 +5769,86 @@ stateDiagram-v2
 [↑ top - 200. Lesson 200 — *Setting Up a Timer With useEffect*](#-200-lesson-200--setting-up-a-timer-with-useeffect)
 
 
+<br>
+
+## 🔧 201. Lesson 201 — *Section Summary: useState vs. useReducer*
+
+[🧳 Section 16: *The Advanced useReducer Hook*](#-section-16-the-advanced-usereducer-hook)
+
+### 📑 Table of Contents:
+- [201. Lesson 201 — *Section Summary: useState vs. useReducer*](#-201-lesson-201--section-summary-usestate-vs-usereducer)
+- [201.1 Context](#2011-context)
+- [201.2 Updating code/theory according the context](#2012-updating-codetheory-according-the-context)
+  - [201.2.1 useState vs useReducer comparison chart](#20121-usestate-vs-usereducer-comparison-chart)
+  - [201.2.2 Decision flow: When to use useReducer](#20122-decision-flow-when-to-use-usereducer)
+- [201.3 Issues](#2013-issues)
+- [201.4 Pending Fixes (TODO)](#2014-pending-fixes-todo)
+
+### 🧠 201.1 Context:
+
+This lesson synthesizes the entire Section 16 by providing a clear comparison between `useState` and `useReducer`, and a decision guide for choosing between them. After building the React Quiz app with `useReducer` (lessons 190–200), this summary helps cement when each hook is appropriate.
+
+**Key Concepts:**
+1. **useState** is ideal for single, independent pieces of state (numbers, strings, simple arrays). Updates happen imperatively via `setState` in event handlers or effects, spread across components.
+2. **useReducer** is designed for multiple related pieces of state and complex state (objects with many properties, nested structures). Logic lives in one central place—the reducer—and updates are declarative via dispatched actions.
+3. **Default choice**: `useState` should remain the default for managing state; switch to `useReducer` only when state complexity justifies the extra boilerplate.
+
+**Advantages:**
+- `useState`: Easy to understand and use; minimal boilerplate; straightforward for simple cases.
+- `useReducer`: Centralized update logic; easier to test reducers in isolation; predictable state transitions; atomic multi-property updates; scales better for complex flows.
+
+**Disadvantages / Gotchas:**
+- `useState`: Update logic scattered across handlers; harder to reason about when many pieces update together; imperative style can lead to bugs when state dependencies grow.
+- `useReducer`: More boilerplate (reducer, actions, dispatch); steeper learning curve; can be overkill for trivial state.
+
+**When to Consider Alternatives:**
+- If state values are completely independent and never interact, keep separate `useState` hooks.
+- For very large or deeply nested state, consider libraries like Zustand, Redux Toolkit, or Immer alongside reducers.
+- For server-derived state, prefer React Query, SWR, or similar data-fetching libraries.
+
+**Project implementation:** `src/App.jsx` uses `useReducer` because the quiz has many related pieces of state (`questions`, `status`, `index`, `answer`, `points`, `highscore`, `secondsRemaining`) that update together in response to actions like `newAnswer`, `nextQuestion`, `finish`, `restart`, and `tick`. A single `initialState` object and a centralized `reducer` keep all transitions predictable and maintainable.
+
+### ⚙️ 201.2 Updating code/theory according the context:
+
+#### **Summary**
+- **Purpose**: Consolidate the differences between `useState` and `useReducer` and provide a decision flow for choosing the right hook.
+- **Problem solved**: Developers often struggle to decide when to migrate from `useState` to `useReducer`; this section gives a clear comparison and flowchart.
+- **Connection**: 201.2.1 presents a side-by-side comparison chart; 201.2.2 provides a step-by-step decision flowchart that leads to either `useState` or `useReducer` based on state characteristics and willingness to handle complexity.
+- **Relation to Section 16**: Summarizes the rationale behind using `useReducer` in the React Quiz app (lessons 190–200) and reinforces best practices.
+
+#### 201.2.1 useState vs useReducer comparison chart
+**Subsection Summary**
+- **Purpose**: Side-by-side comparison of the two hooks for quick reference.
+- **Content**: A two-column chart contrasting ideal use cases, where update logic lives, how updates are triggered, and the nature of updates (imperative vs declarative).
+- **Key takeaway**: `useState` fits single, independent state with logic in event handlers; `useReducer` fits related, complex state with logic in a central reducer.
+- **Code examples in image**: `setScore(0); setPlaying(true); setTimerSec(0);` vs `dispatch({ type: 'startGame' });`.
+- **Usability note**: `useState` is easier to understand; `useReducer` is more difficult but scales better for complex state.
+
+![useState vs useReducer](../img/section16-lecture201-001.png)
+
+#### 201.2.2 Decision flow: When to use useReducer
+**Subsection Summary**
+- **Purpose**: A flowchart to help decide between `useState` and `useReducer` based on state characteristics.
+- **Content**: A series of decision boxes: (1) Just one piece of state? → YES → `useState`; (2) Do states frequently update together? → YES → willingness check → `useReducer` or `useState`; (3) Over 3–4 pieces of related state including objects? → YES → willingness check; (4) Too many event handlers make components large? → YES → `useReducer`, NO → `useState`.
+- **Recommendation in image**: "useState should remain your default choice for managing state"—reinforcing that `useReducer` is an upgrade path, not a default.
+- **Example context**: The image references multiple `setState` calls (`setScore(0); setPlaying(true); setTimerSec(0);`) as a signal that related state might benefit from `useReducer`.
+
+![when to use useReducer](../img/section16-lecture201-002.png)
+
+### 🐞 201.3 Issues:
+
+- This is a summary/theory lesson with no new code changes; the images and diagrams are reference material only.
+- No functional issues identified for Lesson 201 itself—it builds on completed quiz logic from lessons 190–200.
+
+| Issue | Status | Log/Error |
+|---|---|---|
+| N/A (theory lesson) | ℹ️ Informational | Lesson 201 contains only comparison charts and decision flow; no code modifications. |
+
+### 🧱 201.4 Pending Fixes (TODO)
+
+- [ ] Use the "When to use useReducer?" flowchart (201.2.2) as a reference when starting new React components with multiple related state values.
+
+[↑ top - 201. Lesson 201 — *Section Summary: useState vs. useReducer*](#-201-lesson-201--section-summary-usestate-vs-usereducer)
 
 
 
